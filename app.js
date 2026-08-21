@@ -14,13 +14,14 @@ const lastPhotoImage = document.querySelector('#lastPhotoImage');
 const viewer = document.querySelector('#viewer');
 const photoStage = document.querySelector('.photo-stage');
 const previewImage = document.querySelector('#previewImage');
+const transitionImage = document.querySelector('#transitionImage');
 const backToCamera = document.querySelector('#backToCamera');
 const thumbnailStrip = document.querySelector('#thumbnailStrip');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let thumbnailUrls = [];
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let thumbnailUrls = []; let transitionUrl; let transitionTimer;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -71,7 +72,7 @@ async function renderPhotoStrip(id) {
     photos.forEach(photo => {
       const button = document.createElement('button'); button.className = `gallery-thumbnail${photo.id === id ? ' selected' : ''}`; button.setAttribute('aria-label', 'Открыть снимок');
       const image = document.createElement('img'); const url = URL.createObjectURL(photo.blob); thumbnailUrls.push(url); image.src = url; image.alt = ''; button.append(image);
-      button.addEventListener('click', () => { setCurrentPhoto(photo); resetViewerZoom(); }); fragment.append(button);
+      button.addEventListener('click', () => { showPhoto(photo, photo.id < currentPhoto.id ? 'left' : 'right'); }); fragment.append(button);
     });
     thumbnailStrip.replaceChildren(fragment); thumbnailStrip.querySelector('.selected')?.scrollIntoView({ block: 'nearest', inline: 'center' });
   } catch { thumbnailStrip.replaceChildren(); }
@@ -103,13 +104,20 @@ function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].c
 function closeViewer() { viewer.hidden = true; resetViewerZoom(); refreshLastPhoto(); }
 function openViewer() { if (currentPhoto) { resetViewerZoom(); viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
+function showPhoto(photo, direction) {
+  if (!currentPhoto || viewer.hidden || viewerScale > 1 || currentPhoto.id === photo.id) { setCurrentPhoto(photo); resetViewerZoom(); return; }
+  window.clearTimeout(transitionTimer); if (transitionUrl) URL.revokeObjectURL(transitionUrl); transitionUrl = URL.createObjectURL(currentPhoto.blob);
+  transitionImage.src = transitionUrl; transitionImage.hidden = false; transitionImage.className = `transition-image slide-out-${direction}`;
+  setCurrentPhoto(photo); resetViewerZoom(); previewImage.classList.remove('slide-in-left', 'slide-in-right'); void previewImage.offsetWidth; previewImage.classList.add(`slide-in-${direction === 'left' ? 'right' : 'left'}`);
+  transitionTimer = window.setTimeout(() => { transitionImage.hidden = true; transitionImage.className = 'transition-image'; previewImage.classList.remove('slide-in-left', 'slide-in-right'); if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } }, 260);
+}
 async function switchViewedPhoto(direction) {
   if (!currentPhoto) return; const photo = await loadAdjacentPhoto(currentPhoto.id, direction);
-  if (photo) { setCurrentPhoto(photo); resetViewerZoom(); }
+  if (photo) showPhoto(photo, direction === 'previous' ? 'left' : 'right');
 }
 async function autoStartCamera() {
-  if (!navigator.permissions?.query) return;
-  try { if ((await navigator.permissions.query({ name: 'camera' })).state === 'granted') await openCamera(); } catch { /* Разрешение будет запрошено только по кнопке. */ }
+  if (!navigator.permissions?.query) { panel.hidden = false; return; }
+  try { if ((await navigator.permissions.query({ name: 'camera' })).state === 'granted') await openCamera(); else panel.hidden = false; } catch { panel.hidden = false; }
 }
 
 function setZoom(value) {
@@ -170,7 +178,7 @@ window.addEventListener('popstate', () => {
   if (viewer.hidden) return;
   if (viewerScale > 1) { resetViewerZoom(); history.pushState({ faceUpViewer: true }, '', location.href); } else closeViewer();
 });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.23.0');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.24.0');
 refreshLastPhoto();
 autoStartCamera();
 window.addEventListener('pageshow', refreshLastPhoto);

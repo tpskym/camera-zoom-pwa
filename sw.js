@@ -1,5 +1,5 @@
-const CACHE = 'faceup-v1.23.0';
-const APP_FILES = ['./', './index.html', './styles.css?v=1.23.0', './app.js?v=1.23.0', './manifest.webmanifest?v=1.23.0', './icon.svg', './icon-maskable.svg'];
+const CACHE = 'faceup-v1.24.0';
+const APP_FILES = ['./', './index.html', './styles.css?v=1.24.0', './app.js?v=1.24.0', './manifest.webmanifest?v=1.24.0', './icon.svg', './icon-maskable.svg'];
 
 // Сначала сохраняем оболочку приложения — тогда оно откроется без интернета.
 self.addEventListener('install', event => event.waitUntil(
