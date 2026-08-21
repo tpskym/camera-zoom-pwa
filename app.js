@@ -20,6 +20,7 @@ const photoStage = document.querySelector('.photo-stage');
 const previewImage = document.querySelector('#previewImage');
 const transitionImage = document.querySelector('#transitionImage');
 const thumbnailStrip = document.querySelector('#thumbnailStrip');
+const header = document.querySelector('.header');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
@@ -154,9 +155,10 @@ async function synchronizeHardwareZoom() {
   if (!track || Math.abs(target - hardwareZoomLevel) < 0.01) return;
   hardwareZoomChanging = true;
   try {
-    await track.applyConstraints({ advanced: [{ zoom: target }] });
+    try { await track.applyConstraints({ zoom: target }); }
+    catch { await track.applyConstraints({ advanced: [{ zoom: target }] }); }
     if (track !== stream?.getVideoTracks()[0]) return;
-    hardwareZoomLevel = target; updateCameraPreviewZoom(Number(zoom.value));
+    const appliedZoom = Number(track.getSettings?.().zoom); hardwareZoomLevel = Number.isFinite(appliedZoom) && appliedZoom > 0 ? appliedZoom : target; updateCameraPreviewZoom(Number(zoom.value));
   } catch {
     if (track !== stream?.getVideoTracks()[0]) return;
     hardwareZoomCapabilities = undefined; hardwareZoomLevel = 1; updateCameraPreviewZoom(Number(zoom.value));
@@ -370,5 +372,6 @@ async function prepareOfflineMode() {
 prepareOfflineMode();
 refreshLastPhoto();
 autoStartCamera();
+window.setTimeout(() => header.classList.add('is-hidden'), 1000);
 window.addEventListener('pageshow', refreshLastPhoto);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLastPhoto(); });
