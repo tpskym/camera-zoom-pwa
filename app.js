@@ -1,4 +1,5 @@
 const video = document.querySelector('#video');
+const flash = document.querySelector('#flash');
 const start = document.querySelector('#start');
 const switchCamera = document.querySelector('#switch');
 const zoom = document.querySelector('#zoom');
@@ -74,6 +75,7 @@ function zoomPhotoAt(scale, clientX, clientY) {
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
 function openViewer() { if (currentPhoto) { resetViewerZoom(); viewer.hidden = false; } }
+function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
 
 function setZoom(value) {
   const z = Number(value); video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
@@ -84,13 +86,14 @@ async function openCamera() {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('Ваш браузер не поддерживает доступ к камере.');
   stream?.getTracks().forEach(track => track.stop());
   stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
-  video.srcObject = stream; await video.play(); panel.hidden = true; controls.hidden = false; setZoom(1);
+  video.srcObject = stream; await video.play(); panel.hidden = true; capture.disabled = false; switchCamera.disabled = false; zoom.disabled = false; setZoom(1);
 }
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
 zoom.addEventListener('input', event => setZoom(event.target.value));
 capture.addEventListener('click', () => {
   if (!video.videoWidth) return;
+  flashScreen();
   const canvas = document.createElement('canvas'); const width = video.videoWidth; const height = video.videoHeight; const z = Number(zoom.value);
   canvas.width = width; canvas.height = height; const context = canvas.getContext('2d');
   context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -z : z, z); context.drawImage(video, -width / 2, -height / 2, width, height);
@@ -121,7 +124,7 @@ deletePhoto.addEventListener('click', async () => {
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.15.0');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.17.0');
 refreshLastPhoto();
 window.addEventListener('pageshow', refreshLastPhoto);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLastPhoto(); });

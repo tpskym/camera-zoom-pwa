@@ -6,26 +6,27 @@
     <meta name="theme-color" content="#0b0d12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="manifest.webmanifest?v=1.15.0" />
-    <link rel="stylesheet" href="styles.css?v=1.15.0" />
+    <link rel="manifest" href="manifest.webmanifest?v=1.17.0" />
+    <link rel="stylesheet" href="styles.css?v=1.17.0" />
     <title>FaceUp</title>
   </head>
   <body>
     <main class="camera-app">
       <video id="video" autoplay playsinline muted aria-label="Изображение с фронтальной камеры"></video>
-      <section class="header"><h1>FaceUp <span class="version">v1.15.0</span></h1><button id="install" hidden>Установить</button></section>
+      <div id="flash" class="flash" aria-hidden="true"></div>
+      <section class="header"><h1>FaceUp <span class="version">v1.17.0</span></h1><button id="install" hidden>Установить</button></section>
       <section id="startPanel" class="start-panel">
         <p>Откройте фронтальную камеру</p>
         <button id="start" class="primary">Включить камеру</button>
         <small>Камера доступна только через HTTPS.</small>
       </section>
-      <section id="controls" class="controls" hidden>
+      <section id="controls" class="controls">
         <label for="zoom">Зум <output id="zoomValue">1.0×</output></label>
-        <input id="zoom" type="range" min="1" max="10" value="1" step="0.1" aria-label="Зум камеры" />
+        <input id="zoom" type="range" min="1" max="10" value="1" step="0.1" aria-label="Зум камеры" disabled />
         <div class="capture-row">
           <button id="lastPhoto" class="photo-thumb" hidden aria-label="Открыть последний снимок"><img id="lastPhotoImage" alt="Последний снимок" /></button>
-          <button id="capture" class="shutter" aria-label="Сделать снимок"><span></span></button>
-          <button id="switch" class="switch-camera" aria-label="Сменить камеру"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h11l-2.5-2.5 1.4-1.4L19 7l-5.1 4.9-1.4-1.4L15 8H4V6zm16 12H9l2.5 2.5-1.4 1.4L5 17l5.1-4.9 1.4 1.4L9 16h11v2z"/></svg></button>
+          <button id="capture" class="shutter" aria-label="Сделать снимок" disabled><span></span></button>
+          <button id="switch" class="switch-camera" aria-label="Сменить камеру" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h11l-2.5-2.5 1.4-1.4L19 7l-5.1 4.9-1.4-1.4L15 8H4V6zm16 12H9l2.5 2.5-1.4 1.4L5 17l5.1-4.9 1.4 1.4L9 16h11v2z"/></svg></button>
         </div>
       </section>
       <p id="message" class="message" role="alert"></p>
@@ -39,6 +40,6 @@
         </footer>
       </section>
     </main>
-    <script src="app.js?v=1.15.0"></script>
+    <script src="app.js?v=1.17.0"></script>
   </body>
 </html>
