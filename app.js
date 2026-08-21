@@ -181,10 +181,9 @@ function animateFullscreenPhotoResize(from) {
   });
 }
 function animateFullscreenPhotoExit(from, to) {
-  const scaleX = to.width / from.width; const scaleY = to.height / from.height; const offsetX = to.left - from.left; const offsetY = to.top - from.top;
-  if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) return;
+  if (![from, to].every(rect => Number.isFinite(rect.width) && Number.isFinite(rect.height))) return;
   window.clearTimeout(fullscreenExitAnimationTimer); fullscreenTransitionImage.src = previewImage.src; fullscreenTransitionImage.style.left = `${from.left}px`; fullscreenTransitionImage.style.top = `${from.top}px`; fullscreenTransitionImage.style.width = `${from.width}px`; fullscreenTransitionImage.style.height = `${from.height}px`; fullscreenTransitionImage.style.transition = 'none'; fullscreenTransitionImage.style.transform = 'none'; fullscreenTransitionImage.hidden = false;
-  requestAnimationFrame(() => { fullscreenTransitionImage.style.transition = 'transform .48s cubic-bezier(.22,.61,.36,1)'; fullscreenTransitionImage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scaleX}, ${scaleY})`; fullscreenExitAnimationTimer = window.setTimeout(() => { fullscreenTransitionImage.hidden = true; fullscreenTransitionImage.style.transition = ''; fullscreenTransitionImage.style.transform = ''; }, 510); });
+  requestAnimationFrame(() => { fullscreenTransitionImage.style.transition = 'left .48s cubic-bezier(.22,.61,.36,1), top .48s cubic-bezier(.22,.61,.36,1), width .48s cubic-bezier(.22,.61,.36,1), height .48s cubic-bezier(.22,.61,.36,1)'; fullscreenTransitionImage.style.left = `${to.left}px`; fullscreenTransitionImage.style.top = `${to.top}px`; fullscreenTransitionImage.style.width = `${to.width}px`; fullscreenTransitionImage.style.height = `${to.height}px`; fullscreenExitAnimationTimer = window.setTimeout(() => { fullscreenTransitionImage.hidden = true; fullscreenTransitionImage.style.transition = ''; fullscreenTransitionImage.style.transform = ''; fullscreenTransitionImage.style.left = ''; fullscreenTransitionImage.style.top = ''; fullscreenTransitionImage.style.width = ''; fullscreenTransitionImage.style.height = ''; }, 510); });
 }
 function togglePhotoFullscreen() {
   const entering = !viewer.classList.contains('is-photo-fullscreen');
