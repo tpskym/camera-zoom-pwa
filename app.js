@@ -182,7 +182,7 @@ function togglePhotoFullscreen() {
   else showFullscreenPhoto();
 }
 function closeViewer() { window.clearTimeout(viewerSingleTapTimer); isLeavingFullscreen = false; viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; video.style.visibility = ''; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
-function openViewer() { if (currentPhoto) { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; video.style.visibility = 'hidden'; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
+function openViewer() { if (currentPhoto) { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; video.style.visibility = 'hidden'; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); togglePhotoFullscreen(); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
 function showPhoto(photo, direction) {
   if (!currentPhoto || viewer.hidden || viewerScale > 1 || currentPhoto.id === photo.id) { setCurrentPhoto(photo); resetViewerZoom(); return; }
@@ -247,8 +247,9 @@ switchCamera.addEventListener('click', async () => { facingMode = facingMode ===
 zoom.addEventListener('input', event => setZoom(event.target.value));
 function alignZoomDialToControls() {
   const dialBottom = zoomDial.getBoundingClientRect().bottom; const panelTop = controls.getBoundingClientRect().top;
-  zoomArcControl.style.setProperty('--zoom-dial-panel-clip', `${Math.ceil(Math.max(0, dialBottom - (panelTop + 30)))}px`);
-  zoomArcControl.style.setProperty('--zoom-dial-scale-clip', `${Math.ceil(Math.max(0, dialBottom - panelTop))}px`);
+  const sectorClip = Math.ceil(Math.max(0, dialBottom - (panelTop + 30)));
+  zoomArcControl.style.setProperty('--zoom-dial-panel-clip', `${sectorClip}px`);
+  zoomArcControl.style.setProperty('--zoom-dial-scale-clip', `${sectorClip}px`);
 }
 function openZoomArc() { window.clearTimeout(zoomCollapseTimer); window.clearTimeout(zoomDialAlignTimer); controls.classList.add('zoom-adjusting'); zoomArcControl.classList.add('is-expanded'); zoomDialAlignTimer = window.setTimeout(alignZoomDialToControls, 320); }
 function closeZoomArc(immediate = false) { window.clearTimeout(zoomCollapseTimer); window.clearTimeout(zoomDialAlignTimer); const collapse = () => { zoomArcControl.classList.remove('is-expanded'); controls.classList.remove('zoom-adjusting'); }; if (immediate) collapse(); else zoomCollapseTimer = window.setTimeout(collapse, 450); }
