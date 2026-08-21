@@ -24,7 +24,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailSwipeStartX; let thumbnailSwipeStartY; let thumbnailSwipeActive = false; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -308,6 +308,21 @@ previewImage.addEventListener('touchend', event => {
     if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; }
   }
 });
+thumbnailStrip.addEventListener('touchstart', event => {
+  if (event.touches.length !== 1 || viewerScale > 1) return;
+  thumbnailSwipeStartX = event.touches[0].clientX; thumbnailSwipeStartY = event.touches[0].clientY; thumbnailSwipeActive = false;
+}, { passive: true });
+thumbnailStrip.addEventListener('touchmove', event => {
+  if (event.touches.length !== 1 || thumbnailSwipeStartX === undefined || viewerScale > 1) return;
+  const offset = event.touches[0].clientX - thumbnailSwipeStartX; const offsetY = event.touches[0].clientY - thumbnailSwipeStartY;
+  if (Math.abs(offset) <= Math.max(8, Math.abs(offsetY))) return;
+  if (!thumbnailSwipeActive) { thumbnailSwipeActive = true; clearSwipePreview(); swipeStartX = thumbnailSwipeStartX; swipeStartY = thumbnailSwipeStartY; swipeOffsetX = 0; }
+  const direction = offset < 0 ? 'left' : 'right'; prepareSwipeTarget(direction); positionSwipePreview(offset); event.preventDefault();
+}, { passive: false });
+thumbnailStrip.addEventListener('touchend', event => {
+  if (thumbnailSwipeActive) { event.preventDefault(); if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; } }
+  thumbnailSwipeStartX = undefined; thumbnailSwipeStartY = undefined; thumbnailSwipeActive = false;
+}, { passive: false });
 sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
   if (!navigator.canShare?.({ files: [file] })) { message.textContent = 'На этом устройстве используйте «Сохранить файл».'; return; }
