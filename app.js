@@ -21,6 +21,7 @@ const previewImage = document.querySelector('#previewImage');
 const transitionImage = document.querySelector('#transitionImage');
 const thumbnailStrip = document.querySelector('#thumbnailStrip');
 const header = document.querySelector('.header');
+const bottomVersion = document.querySelector('#bottomVersion');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
@@ -359,6 +360,6 @@ async function prepareOfflineMode() {
 prepareOfflineMode();
 refreshLastPhoto();
 autoStartCamera();
-window.setTimeout(() => header.classList.add('is-hidden'), 1000);
+window.setTimeout(() => { header.classList.add('is-hidden'); bottomVersion.classList.add('is-hidden'); }, 1000);
 window.addEventListener('pageshow', refreshLastPhoto);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLastPhoto(); });
