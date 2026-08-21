@@ -187,8 +187,8 @@ function settleViewerZoom() {
 }
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
-function closeViewer() { viewer.hidden = true; resetViewerZoom(); refreshLastPhoto(); }
-function openViewer() { if (currentPhoto) { resetViewerZoom(); viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
+function closeViewer() { viewer.hidden = true; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
+function openViewer() { if (currentPhoto) { resetViewerZoom(); zoomArcControl.hidden = true; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
 function showPhoto(photo, direction) {
   if (!currentPhoto || viewer.hidden || viewerScale > 1 || currentPhoto.id === photo.id) { setCurrentPhoto(photo); resetViewerZoom(); return; }
@@ -313,7 +313,7 @@ deletePhoto.addEventListener('click', async () => {
   try {
     const removedId = currentPhoto.id; const replacement = await loadAdjacentPhoto(removedId, 'next') || await loadAdjacentPhoto(removedId, 'previous');
     await removePhoto(removedId); thumbnailStrip.querySelector(`.gallery-thumbnail[data-photo-id="${removedId}"]`)?.remove();
-    if (replacement) setCurrentPhoto(replacement); else { viewer.hidden = true; currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; thumbnailStrip.replaceChildren(); }
+    if (replacement) setCurrentPhoto(replacement); else { viewer.hidden = true; zoomArcControl.hidden = false; currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; thumbnailStrip.replaceChildren(); }
   } catch { showMessage('Не удалось удалить снимок.'); }
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
