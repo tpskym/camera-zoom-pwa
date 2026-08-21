@@ -6,22 +6,22 @@
     <meta name="theme-color" content="#0b0d12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="manifest.webmanifest?v=1.49.0" />
-    <link rel="stylesheet" href="styles.css?v=1.49.0" />
+    <link rel="manifest" href="manifest.webmanifest?v=1.50.0" />
+    <link rel="stylesheet" href="styles.css?v=1.50.0" />
     <title>FaceUp</title>
   </head>
   <body>
     <main class="camera-app">
       <video id="video" autoplay playsinline muted aria-label="Изображение с фронтальной камеры"></video>
       <div id="flash" class="flash" aria-hidden="true"></div>
-      <section class="header"><h1>FaceUp <span class="version">v1.49.0</span></h1><button id="install" hidden>Установить</button></section>
+      <section class="header"><h1>FaceUp <span class="version">v1.50.0</span></h1><button id="install" hidden>Установить</button></section>
       <section id="startPanel" class="start-panel" hidden>
         <p>Откройте фронтальную камеру</p>
         <button id="start" class="primary">Включить камеру</button>
         <small>Камера доступна только через HTTPS.</small>
       </section>
       <section id="controls" class="controls">
-        <label for="zoom">Зум <output id="zoomValue">1.0×</output></label>
+        <label for="zoom">Зум <output id="zoomValue">1x</output></label>
         <div id="zoomArcControl" class="zoom-arc-control">
           <div class="zoom-line-track" aria-hidden="true"><span id="zoomLineProgress"></span></div>
           <svg class="zoom-dial" viewBox="0 0 360 250" aria-hidden="true">
@@ -49,6 +49,6 @@
         </footer>
       </section>
     </main>
-    <script src="app.js?v=1.49.0"></script>
+    <script src="app.js?v=1.50.0"></script>
   </body>
 </html>
