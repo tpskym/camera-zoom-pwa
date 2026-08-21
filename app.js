@@ -141,7 +141,7 @@ deletePhoto.addEventListener('click', async () => {
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.19.0');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.20.0');
 refreshLastPhoto();
 window.addEventListener('pageshow', refreshLastPhoto);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLastPhoto(); });
