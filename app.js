@@ -25,7 +25,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailInertiaFrame; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailReferenceX; let thumbnailInertiaFrame; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -285,13 +285,23 @@ previewImage.addEventListener('touchend', event => {
   }
 });
 function stopThumbnailInertia() { if (thumbnailInertiaFrame) { cancelAnimationFrame(thumbnailInertiaFrame); thumbnailInertiaFrame = undefined; } }
+function moveThumbnailHighlightToReference() {
+  const selected = thumbnailStrip.querySelector('.gallery-thumbnail.selected'); const stripBounds = thumbnailStrip.getBoundingClientRect();
+  if (!selected || selected.getBoundingClientRect().right >= stripBounds.left && selected.getBoundingClientRect().left <= stripBounds.right) return;
+  let closest; let distance = Infinity;
+  thumbnailStrip.querySelectorAll('.gallery-thumbnail').forEach(thumbnail => {
+    const bounds = thumbnail.getBoundingClientRect(); const nextDistance = Math.abs(bounds.left + bounds.width / 2 - thumbnailReferenceX);
+    if (nextDistance < distance) { closest = thumbnail; distance = nextDistance; }
+  });
+  if (closest) selectThumbnail(closest.dataset.photoId, 'none');
+}
 function startThumbnailInertia(initialVelocity) {
   stopThumbnailInertia(); let velocity = initialVelocity; let lastFrame;
   const move = now => {
     if (lastFrame === undefined) { lastFrame = now; thumbnailInertiaFrame = requestAnimationFrame(move); return; }
     const elapsed = Math.min(32, now - lastFrame); lastFrame = now;
     const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth); const previous = thumbnailStrip.scrollLeft;
-    thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, previous + velocity * elapsed));
+    thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, previous + velocity * elapsed)); moveThumbnailHighlightToReference();
     velocity *= Math.pow(.994, elapsed);
     if (Math.abs(velocity) < .015 || thumbnailStrip.scrollLeft === previous) { thumbnailInertiaFrame = undefined; return; }
     thumbnailInertiaFrame = requestAnimationFrame(move);
@@ -302,12 +312,12 @@ thumbnailStrip.addEventListener('touchstart', event => {
   const thumbnail = event.target.closest?.('.gallery-thumbnail'); const photo = thumbnail && thumbnailPhotos.get(thumbnail.dataset.photoId);
   if (event.touches.length !== 1 || viewerScale > 1 || !photo) return;
   stopThumbnailInertia(); if (photo.id !== currentPhoto?.id) setCurrentPhoto(photo, 'none');
-  thumbnailDragStartX = event.touches[0].clientX; thumbnailDragStartScrollLeft = thumbnailStrip.scrollLeft; thumbnailDragLastX = thumbnailDragStartX; thumbnailDragLastTime = performance.now(); thumbnailDragVelocity = 0;
+  thumbnailDragStartX = event.touches[0].clientX; thumbnailReferenceX = thumbnailDragStartX; thumbnailDragStartScrollLeft = thumbnailStrip.scrollLeft; thumbnailDragLastX = thumbnailDragStartX; thumbnailDragLastTime = performance.now(); thumbnailDragVelocity = 0;
 }, { passive: true });
 thumbnailStrip.addEventListener('touchmove', event => {
   if (event.touches.length !== 1 || thumbnailDragStartX === undefined || viewerScale > 1) return;
-  const touch = event.touches[0]; const now = performance.now(); const offset = touch.clientX - thumbnailDragStartX; const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth);
-  thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, thumbnailDragStartScrollLeft - offset));
+  const touch = event.touches[0]; const now = performance.now(); thumbnailReferenceX = touch.clientX; const offset = touch.clientX - thumbnailDragStartX; const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth);
+  thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, thumbnailDragStartScrollLeft - offset)); moveThumbnailHighlightToReference();
   thumbnailDragVelocity = (touch.clientX - thumbnailDragLastX) / Math.max(1, now - thumbnailDragLastTime); thumbnailDragLastX = touch.clientX; thumbnailDragLastTime = now; event.preventDefault();
 }, { passive: false });
 thumbnailStrip.addEventListener('touchend', event => {
