@@ -11,13 +11,14 @@ const capture = document.querySelector('#capture');
 const lastPhoto = document.querySelector('#lastPhoto');
 const lastPhotoImage = document.querySelector('#lastPhotoImage');
 const viewer = document.querySelector('#viewer');
+const photoStage = document.querySelector('.photo-stage');
 const previewImage = document.querySelector('#previewImage');
 const backToCamera = document.querySelector('#backToCamera');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let pinchStartDistance; let pinchStartScale;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -48,13 +49,27 @@ function setCurrentPhoto(photo) {
   currentPhoto = photo; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(photo.blob);
   lastPhotoImage.src = photoUrl; previewImage.src = photoUrl; downloadPhoto.href = photoUrl; downloadPhoto.download = `FaceUp-${photo.id}.jpg`; lastPhoto.hidden = false;
 }
+async function refreshLastPhoto() {
+  try {
+    const photo = await loadLatestPhoto();
+    if (photo) setCurrentPhoto(photo); else { currentPhoto = undefined; lastPhoto.hidden = true; }
+  } catch { /* Камера продолжит работать, даже если хранилище временно недоступно. */ }
+}
 function showMessage(text, duration = 0) {
   window.clearTimeout(messageTimer); message.textContent = text;
   if (duration) messageTimer = window.setTimeout(() => { if (message.textContent === text) message.textContent = ''; }, duration);
 }
-function setViewerScale(scale) { viewerScale = Math.min(5, Math.max(1, scale)); previewImage.style.transform = `scale(${viewerScale})`; }
+function updateViewerTransform() { previewImage.style.transform = `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`; }
+function resetViewerZoom() { viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
+function zoomPhotoAt(scale, clientX, clientY) {
+  const nextScale = Math.min(5, Math.max(1, scale)); const stage = photoStage.getBoundingClientRect();
+  const focalX = clientX - stage.left - stage.width / 2; const focalY = clientY - stage.top - stage.height / 2;
+  const ratio = nextScale / viewerScale; viewerX = focalX - ratio * (focalX - viewerX); viewerY = focalY - ratio * (focalY - viewerY);
+  viewerScale = nextScale; updateViewerTransform();
+}
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
-function openViewer() { if (currentPhoto) { setViewerScale(1); viewer.hidden = false; } }
+function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
+function openViewer() { if (currentPhoto) { resetViewerZoom(); viewer.hidden = false; } }
 
 function setZoom(value) {
   const z = Number(value); video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
@@ -79,7 +94,7 @@ capture.addEventListener('click', () => {
 });
 lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { viewer.hidden = true; });
 previewImage.addEventListener('touchstart', event => { if (event.touches.length === 2) { pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); } }, { passive: false });
-previewImage.addEventListener('touchmove', event => { if (event.touches.length === 2 && pinchStartDistance) { setViewerScale(pinchStartScale * touchDistance(event.touches) / pinchStartDistance); event.preventDefault(); } }, { passive: false });
+previewImage.addEventListener('touchmove', event => { if (event.touches.length === 2 && pinchStartDistance) { const point = touchMidpoint(event.touches); zoomPhotoAt(pinchStartScale * touchDistance(event.touches) / pinchStartDistance, point.x, point.y); event.preventDefault(); } }, { passive: false });
 previewImage.addEventListener('touchend', event => { if (event.touches.length < 2) pinchStartDistance = undefined; });
 sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
@@ -96,5 +111,7 @@ deletePhoto.addEventListener('click', async () => {
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.12.0');
-loadLatestPhoto().then(photo => { if (photo) setCurrentPhoto(photo); }).catch(() => { /* Камера продолжит работать, даже если хранилище недоступно. */ });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.14.0');
+refreshLastPhoto();
+window.addEventListener('pageshow', refreshLastPhoto);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLastPhoto(); });
