@@ -26,7 +26,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let viewerSingleTapTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -173,8 +173,8 @@ function togglePhotoFullscreen() {
   if (entering && document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
   if (!entering && document.fullscreenElement) document.exitFullscreen().catch(() => {});
 }
-function closeViewer() { viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
-function openViewer() { if (currentPhoto) { viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
+function closeViewer() { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
+function openViewer() { if (currentPhoto) { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
 function showPhoto(photo, direction) {
   if (!currentPhoto || viewer.hidden || viewerScale > 1 || currentPhoto.id === photo.id) { setCurrentPhoto(photo); resetViewerZoom(); return; }
@@ -281,11 +281,14 @@ previewImage.addEventListener('touchend', event => {
     const touch = event.changedTouches[0]; const timestamp = Date.now();
     const isDoubleTap = touch && !tapMoved && previousTap && timestamp - previousTap.time < 300 && Math.hypot(touch.clientX - previousTap.x, touch.clientY - previousTap.y) < 32;
     if (isDoubleTap) {
-      event.preventDefault(); previousTap = undefined; swipeStartX = undefined; dragStartX = undefined; clearSwipePreview();
+      event.preventDefault(); window.clearTimeout(viewerSingleTapTimer); previousTap = undefined; swipeStartX = undefined; dragStartX = undefined; clearSwipePreview();
       animateViewerZoom(() => { if (viewerScale > 1) resetViewerZoom(); else zoomPhotoAt(3, touch.clientX, touch.clientY); });
       return;
     }
-    if (touch && !tapMoved) { const nextTap = { time: timestamp, x: touch.clientX, y: touch.clientY }; previousTap = nextTap; togglePhotoFullscreen(); window.setTimeout(() => { if (previousTap === nextTap) previousTap = undefined; }, 300); }
+    if (touch && !tapMoved) {
+      const nextTap = { time: timestamp, x: touch.clientX, y: touch.clientY }; previousTap = nextTap; window.clearTimeout(viewerSingleTapTimer);
+      viewerSingleTapTimer = window.setTimeout(() => { if (previousTap === nextTap && !viewer.hidden) { togglePhotoFullscreen(); previousTap = undefined; } }, 310);
+    }
     else previousTap = undefined;
     dragStartX = undefined;
     if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; }
