@@ -25,7 +25,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -140,32 +140,8 @@ function updateZoomDial(value) {
   zoomDialCurrent.textContent = formatCameraZoom(value);
 }
 function updateCameraPreviewZoom(logicalZoom) {
-  cameraRenderZoom = logicalZoom / Math.max(1, hardwareZoomLevel);
+  cameraRenderZoom = logicalZoom;
   video.style.transform = facingMode === 'user' ? `scale(${-cameraRenderZoom}, ${cameraRenderZoom})` : `scale(${cameraRenderZoom})`;
-}
-function getHardwareZoomTarget(logicalZoom) {
-  if (facingMode !== 'environment' || !hardwareZoomCapabilities) return 1;
-  const base = Number(hardwareZoomCapabilities.min) || 1;
-  const requested = logicalZoom >= 7 ? 7 : logicalZoom >= 5 ? 5 : logicalZoom >= 3 ? 3 : base;
-  return Math.max(base, Math.min(Number(hardwareZoomCapabilities.max) || requested, requested));
-}
-async function synchronizeHardwareZoom() {
-  if (hardwareZoomChanging || requestedHardwareZoom === undefined || !hardwareZoomCapabilities) return;
-  const track = stream?.getVideoTracks()[0]; const target = requestedHardwareZoom;
-  if (!track || Math.abs(target - hardwareZoomLevel) < 0.01) return;
-  hardwareZoomChanging = true;
-  try {
-    try { await track.applyConstraints({ zoom: target }); }
-    catch { await track.applyConstraints({ advanced: [{ zoom: target }] }); }
-    if (track !== stream?.getVideoTracks()[0]) return;
-    const appliedZoom = Number(track.getSettings?.().zoom); hardwareZoomLevel = Number.isFinite(appliedZoom) && appliedZoom > 0 ? appliedZoom : target; updateCameraPreviewZoom(Number(zoom.value));
-  } catch {
-    if (track !== stream?.getVideoTracks()[0]) return;
-    hardwareZoomCapabilities = undefined; hardwareZoomLevel = 1; updateCameraPreviewZoom(Number(zoom.value));
-  } finally {
-    hardwareZoomChanging = false;
-    if (requestedHardwareZoom !== hardwareZoomLevel) synchronizeHardwareZoom();
-  }
 }
 function updateViewerTransform() { previewImage.style.transform = `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`; }
 function resetViewerZoom() { viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
@@ -237,7 +213,7 @@ async function autoStartCamera() {
 function setZoom(value) {
   const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
   if (nextSnap && nextSnap !== cameraZoomSnap) navigator.vibrate?.(8);
-  cameraZoomSnap = nextSnap; const z = nextSnap || requestedZoom; requestedHardwareZoom = getHardwareZoomTarget(z); updateCameraPreviewZoom(z); synchronizeHardwareZoom();
+  cameraZoomSnap = nextSnap; const z = nextSnap || requestedZoom; updateCameraPreviewZoom(z);
   const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomLineProgress.style.width = `${zoomPercent}%`; zoomLineValue.textContent = formatCameraZoom(z); updateZoomDial(z);
 }
 async function openCamera() {
@@ -246,10 +222,7 @@ async function openCamera() {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('Ваш браузер не поддерживает доступ к камере.');
   stream?.getTracks().forEach(track => track.stop());
   const videoConstraints = { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } };
-  const supportsHardwareZoom = facingMode === 'environment' && navigator.mediaDevices.getSupportedConstraints?.().zoom;
-  try { stream = await navigator.mediaDevices.getUserMedia({ video: supportsHardwareZoom ? { ...videoConstraints, zoom: true } : videoConstraints, audio: false }); }
-  catch (error) { if (!supportsHardwareZoom) throw error; stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false }); }
-  const track = stream.getVideoTracks()[0]; const capabilities = track.getCapabilities?.(); hardwareZoomCapabilities = facingMode === 'environment' && capabilities?.zoom ? capabilities.zoom : undefined; hardwareZoomLevel = Number(track.getSettings?.().zoom) || Number(hardwareZoomCapabilities?.min) || 1; requestedHardwareZoom = undefined; hardwareZoomChanging = false;
+  stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
   video.srcObject = stream; await video.play(); panel.hidden = true; capture.disabled = false; switchCamera.disabled = false; zoom.disabled = false; cameraZoomSnap = undefined; setZoom(1);
 }
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
