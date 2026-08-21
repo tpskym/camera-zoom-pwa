@@ -173,7 +173,7 @@ switchCamera.addEventListener('click', async () => { facingMode = facingMode ===
 zoom.addEventListener('input', event => setZoom(event.target.value));
 capture.addEventListener('click', () => {
   if (!video.videoWidth) return;
-  flashScreen();
+  flashScreen(); navigator.vibrate?.(10);
   const canvas = document.createElement('canvas'); const width = video.videoWidth; const height = video.videoHeight; const z = Number(zoom.value);
   canvas.width = width; canvas.height = height; const context = canvas.getContext('2d');
   context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -z : z, z); context.drawImage(video, -width / 2, -height / 2, width, height);
