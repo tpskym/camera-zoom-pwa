@@ -138,7 +138,7 @@ function clearSwipePreview() {
 }
 function positionSwipePreview(offset) {
   swipeOffsetX = offset;
-  if (!swipeTarget) { previewImage.style.transform = 'translate(0, 0) scale(1)'; return; }
+  if (!swipeTarget) { const edgeOffset = Math.sign(offset) * Math.min(48, Math.abs(offset) * 0.22); previewImage.style.transform = `translate(${edgeOffset}px, 0) scale(1)`; return; }
   previewImage.style.transform = `translate(${offset}px, 0) scale(1)`; const stageWidth = photoStage.getBoundingClientRect().width;
   transitionImage.style.transform = `translate(${(swipeDirection === 'left' ? stageWidth : -stageWidth) + offset}px, 0)`;
 }

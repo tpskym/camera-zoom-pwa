@@ -1,4 +1,5 @@
 :root { color-scheme: dark; font-family: system-ui, sans-serif; background:#0b0d12; }
+.viewer .photo-stage { background:#050607; isolation:isolate; }
 .viewer .photo-stage img { object-fit:cover; }
 .viewer .thumbnail-strip { overscroll-behavior-x:contain; scroll-behavior:smooth; }
 .viewer .gallery-thumbnail { transform:scale(1); transform-origin:center; transition:transform .22s cubic-bezier(.2,.8,.2,1), border-color .18s ease, box-shadow .22s ease; will-change:transform; }
