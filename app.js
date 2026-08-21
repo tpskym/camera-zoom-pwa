@@ -168,8 +168,13 @@ function settleViewerZoom() {
 }
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
-function closeViewer() { viewer.hidden = true; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
-function openViewer() { if (currentPhoto) { resetViewerZoom(); zoomArcControl.hidden = true; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
+function togglePhotoFullscreen() {
+  const entering = !viewer.classList.contains('is-photo-fullscreen'); viewer.classList.toggle('is-photo-fullscreen', entering);
+  if (entering && document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  if (!entering && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+function closeViewer() { viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
+function openViewer() { if (currentPhoto) { viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
 function showPhoto(photo, direction) {
   if (!currentPhoto || viewer.hidden || viewerScale > 1 || currentPhoto.id === photo.id) { setCurrentPhoto(photo); resetViewerZoom(); return; }
@@ -212,9 +217,9 @@ async function autoStartCamera() {
 }
 
 function setZoom(value) {
-  const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
-  if (nextSnap && nextSnap !== cameraZoomSnap) navigator.vibrate?.(8);
-  cameraZoomSnap = nextSnap; const z = nextSnap || requestedZoom; updateCameraPreviewZoom(z);
+  const previousZoom = Number(zoom.value); const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
+  const z = nextSnap || requestedZoom; if (nextSnap && nextSnap !== cameraZoomSnap || (z === 1 || z === 10) && previousZoom !== z) navigator.vibrate?.(8);
+  cameraZoomSnap = nextSnap; updateCameraPreviewZoom(z);
   const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomLineProgress.style.width = `${zoomPercent}%`; zoomLineValue.textContent = formatCameraZoom(z); updateZoomDial(z);
 }
 async function openCamera() {
@@ -224,7 +229,7 @@ async function openCamera() {
   stream?.getTracks().forEach(track => track.stop());
   const videoConstraints = { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } };
   stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
-  video.srcObject = stream; await video.play(); panel.hidden = true; capture.disabled = false; switchCamera.disabled = false; zoom.disabled = false; cameraZoomSnap = undefined; setZoom(1);
+  video.srcObject = stream; await video.play(); panel.hidden = true; capture.disabled = false; switchCamera.disabled = false; zoom.disabled = false; zoom.value = 1; cameraZoomSnap = undefined; setZoom(1);
 }
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
@@ -280,7 +285,8 @@ previewImage.addEventListener('touchend', event => {
       animateViewerZoom(() => { if (viewerScale > 1) resetViewerZoom(); else zoomPhotoAt(3, touch.clientX, touch.clientY); });
       return;
     }
-    if (touch && !tapMoved) previousTap = { time: timestamp, x: touch.clientX, y: touch.clientY }; else previousTap = undefined;
+    if (touch && !tapMoved) { const nextTap = { time: timestamp, x: touch.clientX, y: touch.clientY }; previousTap = nextTap; togglePhotoFullscreen(); window.setTimeout(() => { if (previousTap === nextTap) previousTap = undefined; }, 300); }
+    else previousTap = undefined;
     dragStartX = undefined;
     if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; }
   }
@@ -347,8 +353,10 @@ window.addEventListener('beforeinstallprompt', event => { event.preventDefault()
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
 window.addEventListener('popstate', () => {
   if (viewer.hidden) return;
-  if (viewerScale > 1) { resetViewerZoom(); history.pushState({ faceUpViewer: true }, '', location.href); } else closeViewer();
+  if (viewer.classList.contains('is-photo-fullscreen')) { togglePhotoFullscreen(); history.pushState({ faceUpViewer: true }, '', location.href); }
+  else if (viewerScale > 1) { resetViewerZoom(); history.pushState({ faceUpViewer: true }, '', location.href); } else closeViewer();
 });
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) viewer.classList.remove('is-photo-fullscreen'); });
 async function prepareOfflineMode() {
   if (!('serviceWorker' in navigator)) return;
   try {
