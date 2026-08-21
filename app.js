@@ -169,7 +169,10 @@ function settleViewerZoom() {
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
 function togglePhotoFullscreen() {
-  const entering = !viewer.classList.contains('is-photo-fullscreen'); viewer.classList.toggle('is-photo-fullscreen', entering);
+  const entering = !viewer.classList.contains('is-photo-fullscreen');
+  if (entering) viewer.style.setProperty('--fullscreen-photo-height', `${photoStage.getBoundingClientRect().height}px`);
+  else viewer.style.removeProperty('--fullscreen-photo-height');
+  viewer.classList.toggle('is-photo-fullscreen', entering);
   if (entering && document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
   if (!entering && document.fullscreenElement) document.exitFullscreen().catch(() => {});
 }
