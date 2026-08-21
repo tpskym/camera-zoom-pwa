@@ -1,4 +1,4 @@
-const CACHE = 'faceup-v1.8.0';
+const CACHE = 'faceup-v1.9.0';
 const APP_FILES = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './icon.svg', './icon-maskable.svg'];
 
 // Сначала сохраняем оболочку приложения — тогда оно откроется без интернета.
