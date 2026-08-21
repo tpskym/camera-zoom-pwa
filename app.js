@@ -24,7 +24,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailSwipeStartX; let thumbnailSwipeStartY; let thumbnailSwipeActive = false; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailScrollFrame; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -64,31 +64,32 @@ async function removePhoto(id) {
   await new Promise((resolve, reject) => { const tx = db.transaction(STORE_NAME, 'readwrite'); tx.objectStore(STORE_NAME).delete(id); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
   db.close();
 }
-function setCurrentPhoto(photo) {
+function setCurrentPhoto(photo, thumbnailBehavior = 'smooth') {
   currentPhoto = photo; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(photo.blob);
   lastPhotoImage.src = photoUrl; previewImage.src = photoUrl; downloadPhoto.href = photoUrl; downloadPhoto.download = `FaceUp-${photo.id}.jpg`; lastPhoto.hidden = false;
-  renderPhotoStrip(photo.id);
+  renderPhotoStrip(photo.id, thumbnailBehavior);
 }
 function selectThumbnail(id, behavior = 'smooth') {
   const selected = thumbnailStrip.querySelector(`.gallery-thumbnail[data-photo-id="${id}"]`);
   if (!selected) return false;
   thumbnailStrip.querySelector('.gallery-thumbnail.selected')?.classList.remove('selected');
   selected.classList.add('selected');
-  selected.scrollIntoView({ block: 'nearest', inline: 'center', behavior });
+  if (behavior !== 'none') selected.scrollIntoView({ block: 'nearest', inline: 'center', behavior });
   return true;
 }
-async function renderPhotoStrip(id) {
-  if (selectThumbnail(id)) return;
+async function renderPhotoStrip(id, behavior = 'smooth') {
+  if (selectThumbnail(id, behavior)) return;
   try {
     const photos = await loadAllPhotos(); if (currentPhoto?.id !== id) return;
     thumbnailUrls.forEach(url => URL.revokeObjectURL(url)); thumbnailUrls = [];
+    thumbnailPhotos = new Map(photos.map(photo => [String(photo.id), photo]));
     const fragment = document.createDocumentFragment();
     photos.forEach(photo => {
       const button = document.createElement('button'); button.className = 'gallery-thumbnail'; button.dataset.photoId = photo.id; button.setAttribute('aria-label', 'Открыть снимок');
       const image = document.createElement('img'); const url = URL.createObjectURL(photo.blob); thumbnailUrls.push(url); image.src = url; image.alt = ''; button.append(image);
       button.addEventListener('click', () => { showPhoto(photo, photo.id < currentPhoto.id ? 'left' : 'right'); }); fragment.append(button);
     });
-    thumbnailStrip.replaceChildren(fragment); selectThumbnail(id, 'auto');
+    thumbnailStrip.replaceChildren(fragment); selectThumbnail(id, behavior === 'none' ? 'none' : 'auto');
   } catch { thumbnailStrip.replaceChildren(); }
 }
 async function refreshLastPhoto() {
@@ -309,20 +310,23 @@ previewImage.addEventListener('touchend', event => {
   }
 });
 thumbnailStrip.addEventListener('touchstart', event => {
-  if (event.touches.length !== 1 || viewerScale > 1) return;
-  thumbnailSwipeStartX = event.touches[0].clientX; thumbnailSwipeStartY = event.touches[0].clientY; thumbnailSwipeActive = false;
+  const thumbnail = event.target.closest?.('.gallery-thumbnail'); const photo = thumbnail && thumbnailPhotos.get(thumbnail.dataset.photoId);
+  if (event.touches.length === 1 && viewerScale === 1 && photo && photo.id !== currentPhoto?.id) setCurrentPhoto(photo, 'none');
 }, { passive: true });
-thumbnailStrip.addEventListener('touchmove', event => {
-  if (event.touches.length !== 1 || thumbnailSwipeStartX === undefined || viewerScale > 1) return;
-  const offset = event.touches[0].clientX - thumbnailSwipeStartX; const offsetY = event.touches[0].clientY - thumbnailSwipeStartY;
-  if (Math.abs(offset) <= Math.max(8, Math.abs(offsetY))) return;
-  if (!thumbnailSwipeActive) { thumbnailSwipeActive = true; clearSwipePreview(); swipeStartX = thumbnailSwipeStartX; swipeStartY = thumbnailSwipeStartY; swipeOffsetX = 0; }
-  const direction = offset < 0 ? 'left' : 'right'; prepareSwipeTarget(direction); positionSwipePreview(offset); event.preventDefault();
-}, { passive: false });
-thumbnailStrip.addEventListener('touchend', event => {
-  if (thumbnailSwipeActive) { event.preventDefault(); if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; } }
-  thumbnailSwipeStartX = undefined; thumbnailSwipeStartY = undefined; thumbnailSwipeActive = false;
-}, { passive: false });
+thumbnailStrip.addEventListener('scroll', () => {
+  if (thumbnailScrollFrame || viewerScale > 1) return;
+  thumbnailScrollFrame = requestAnimationFrame(() => {
+    thumbnailScrollFrame = undefined;
+    const stripBounds = thumbnailStrip.getBoundingClientRect(); const center = stripBounds.left + stripBounds.width / 2;
+    let closest; let distance = Infinity;
+    thumbnailStrip.querySelectorAll('.gallery-thumbnail').forEach(thumbnail => {
+      const bounds = thumbnail.getBoundingClientRect(); const nextDistance = Math.abs(bounds.left + bounds.width / 2 - center);
+      if (nextDistance < distance) { closest = thumbnail; distance = nextDistance; }
+    });
+    const photo = closest && thumbnailPhotos.get(closest.dataset.photoId);
+    if (photo && photo.id !== currentPhoto?.id) setCurrentPhoto(photo, 'none');
+  });
+}, { passive: true });
 sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
   if (!navigator.canShare?.({ files: [file] })) { message.textContent = 'На этом устройстве используйте «Сохранить файл».'; return; }
