@@ -189,7 +189,7 @@ capture.addEventListener('click', () => {
 });
 lastPhoto.addEventListener('click', openViewer);
 previewImage.addEventListener('touchstart', event => {
-  if (event.touches.length === 2) { clearSwipePreview(); swipeStartX = undefined; swipeStartY = undefined; pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
+  if (event.touches.length === 2) { clearSwipePreview(); swipeStartX = undefined; swipeStartY = undefined; dragStartX = undefined; pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
   if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; event.preventDefault(); }
   if (event.touches.length === 1 && viewerScale === 1) { clearSwipePreview(); swipeStartX = event.touches[0].clientX; swipeStartY = event.touches[0].clientY; swipeOffsetX = 0; }
 }, { passive: false });
@@ -200,6 +200,7 @@ previewImage.addEventListener('touchmove', event => {
 }, { passive: false });
 previewImage.addEventListener('touchend', event => {
   if (event.touches.length < 2) { pinchStartDistance = undefined; settleViewerZoom(); }
+  if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; }
   if (!event.touches.length) {
     dragStartX = undefined;
     if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; }
