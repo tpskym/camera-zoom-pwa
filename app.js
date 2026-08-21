@@ -1,8 +1,6 @@
 const video = document.querySelector('#video');
 const start = document.querySelector('#start');
 const switchCamera = document.querySelector('#switch');
-const zoom = document.querySelector('#zoom');
-const zoomValue = document.querySelector('#zoomValue');
 const controls = document.querySelector('#controls');
 const panel = document.querySelector('#startPanel');
 const message = document.querySelector('#message');
@@ -49,28 +47,21 @@ function setCurrentPhoto(photo) {
 }
 function openViewer() { if (currentPhoto) viewer.hidden = false; }
 
-function setZoom(value) {
-  const z = Number(value);
-  // Фронтальная камера должна вести себя как привычная селфи-камера.
-  video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
-  zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`;
-}
+function updateCameraTransform() { video.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'none'; }
 async function openCamera() {
   message.textContent = '';
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('Ваш браузер не поддерживает доступ к камере.');
   stream?.getTracks().forEach(track => track.stop());
   stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
-  video.srcObject = stream; await video.play(); panel.hidden = true; controls.hidden = false; setZoom(1);
+  video.srcObject = stream; await video.play(); panel.hidden = true; controls.hidden = false; updateCameraTransform();
 }
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
-zoom.addEventListener('input', event => setZoom(event.target.value));
-document.querySelectorAll('[data-zoom]').forEach(button => button.addEventListener('click', () => setZoom(button.dataset.zoom)));
 capture.addEventListener('click', () => {
   if (!video.videoWidth) return;
-  const canvas = document.createElement('canvas'); const width = video.videoWidth; const height = video.videoHeight; const z = Number(zoom.value);
+  const canvas = document.createElement('canvas'); const width = video.videoWidth; const height = video.videoHeight;
   canvas.width = width; canvas.height = height; const context = canvas.getContext('2d');
-  context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -z : z, z); context.drawImage(video, -width / 2, -height / 2, width, height);
+  context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -1 : 1, 1); context.drawImage(video, -width / 2, -height / 2, width, height);
   canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); message.textContent = 'Снимок сохранён в FaceUp.'; } catch { message.textContent = 'Не удалось сохранить снимок.'; } }, 'image/jpeg', 0.95);
 });
 lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { viewer.hidden = true; });
@@ -85,6 +76,7 @@ deletePhoto.addEventListener('click', async () => {
     await removePhoto(currentPhoto.id); const nextPhoto = await loadLatestPhoto(); viewer.hidden = true;
     if (nextPhoto) setCurrentPhoto(nextPhoto); else { currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; }
     message.textContent = 'Снимок удалён из FaceUp.';
+    window.setTimeout(() => { if (message.textContent === 'Снимок удалён из FaceUp.') message.textContent = ''; }, 2500);
   } catch { message.textContent = 'Не удалось удалить снимок.'; }
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
