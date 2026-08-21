@@ -6,9 +6,9 @@ const zoom = document.querySelector('#zoom');
 const zoomValue = document.querySelector('#zoomValue');
 const zoomArcControl = document.querySelector('#zoomArcControl');
 const zoomLineProgress = document.querySelector('#zoomLineProgress');
+const zoomLineValue = document.querySelector('#zoomLineValue');
 const zoomDialWheel = document.querySelector('#zoomDialWheel');
 const zoomDialCurrent = document.querySelector('#zoomDialCurrent');
-const zoomDialIndicator = document.querySelector('#zoomDialIndicator');
 const controls = document.querySelector('#controls');
 const panel = document.querySelector('#startPanel');
 const message = document.querySelector('#message');
@@ -25,12 +25,12 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
 const ZOOM_SNAP_POINTS = [2, 3, 5, 7];
-const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 190; const DIAL_START_ANGLE = 195; const DIAL_END_ANGLE = 345;
+const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 190; const DIAL_START_ANGLE = 270; const DIAL_END_ANGLE = 345;
 function photoDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -134,8 +134,7 @@ function buildZoomDial() {
   zoomDialWheel.replaceChildren(fragment);
 }
 function updateZoomDial(value) {
-  const angle = dialAngleForZoom(value); const outer = dialPoint(157, angle); const inner = dialPoint(129, angle);
-  zoomDialIndicator.setAttribute('x1', outer.x); zoomDialIndicator.setAttribute('y1', outer.y); zoomDialIndicator.setAttribute('x2', inner.x); zoomDialIndicator.setAttribute('y2', inner.y);
+  zoomDialWheel.setAttribute('transform', `rotate(${270 - dialAngleForZoom(value)} ${DIAL_CENTER_X} ${DIAL_CENTER_Y})`);
   zoomDialCurrent.textContent = formatCameraZoom(value);
 }
 function updateCameraPreviewZoom(logicalZoom) {
@@ -236,7 +235,7 @@ function setZoom(value) {
   const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
   if (nextSnap && nextSnap !== cameraZoomSnap) navigator.vibrate?.(8);
   cameraZoomSnap = nextSnap; const z = nextSnap || requestedZoom; requestedHardwareZoom = getHardwareZoomTarget(z); updateCameraPreviewZoom(z); synchronizeHardwareZoom();
-  const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomValue.value = formatCameraZoom(z); zoomValue.textContent = formatCameraZoom(z); zoomLineProgress.style.width = `${zoomPercent}%`; updateZoomDial(z);
+  const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomValue.value = formatCameraZoom(z); zoomValue.textContent = formatCameraZoom(z); zoomLineProgress.style.width = `${zoomPercent}%`; zoomLineValue.textContent = formatCameraZoom(z); updateZoomDial(z);
 }
 async function openCamera() {
   message.textContent = '';
@@ -255,11 +254,11 @@ zoom.addEventListener('input', event => setZoom(event.target.value));
 function openZoomArc() { window.clearTimeout(zoomCollapseTimer); controls.classList.add('zoom-adjusting'); zoomArcControl.classList.add('is-expanded'); }
 function closeZoomArc() { window.clearTimeout(zoomCollapseTimer); zoomCollapseTimer = window.setTimeout(() => { zoomArcControl.classList.remove('is-expanded'); controls.classList.remove('zoom-adjusting'); }, 450); }
 function setZoomFromPointer(event) {
-  const bounds = zoomArcControl.getBoundingClientRect(); const fraction = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
-  setZoom(1 + fraction * 9);
+  const bounds = zoomArcControl.getBoundingClientRect(); const shift = (zoomDragStartX - event.clientX) / bounds.width * 9;
+  setZoom(Math.max(1, Math.min(10, zoomDragStartValue + shift)));
 }
-zoom.addEventListener('pointerdown', event => { activeZoomPointer = event.pointerId; zoom.setPointerCapture?.(event.pointerId); openZoomArc(); setZoomFromPointer(event); });
-zoom.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) setZoomFromPointer(event); });
+zoom.addEventListener('pointerdown', event => { event.preventDefault(); activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoom.setPointerCapture?.(event.pointerId); openZoomArc(); });
+zoom.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) { event.preventDefault(); setZoomFromPointer(event); } });
 zoom.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
 zoom.addEventListener('pointercancel', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
 buildZoomDial(); updateZoomDial(1);
