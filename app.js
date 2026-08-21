@@ -15,6 +15,7 @@ const previewImage = document.querySelector('#previewImage');
 const backToCamera = document.querySelector('#backToCamera');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
+const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
 
 const DB_NAME = 'faceup';
@@ -36,6 +37,11 @@ async function loadLatestPhoto() {
   const db = await photoDatabase();
   const photo = await new Promise((resolve, reject) => { const request = db.transaction(STORE_NAME).objectStore(STORE_NAME).openCursor(null, 'prev'); request.onsuccess = () => resolve(request.result?.value); request.onerror = () => reject(request.error); });
   db.close(); return photo;
+}
+async function removePhoto(id) {
+  const db = await photoDatabase();
+  await new Promise((resolve, reject) => { const tx = db.transaction(STORE_NAME, 'readwrite'); tx.objectStore(STORE_NAME).delete(id); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+  db.close();
 }
 function setCurrentPhoto(photo) {
   currentPhoto = photo; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(photo.blob);
@@ -72,6 +78,14 @@ sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
   if (!navigator.canShare?.({ files: [file] })) { message.textContent = 'На этом устройстве используйте «Сохранить файл».'; return; }
   try { await navigator.share({ files: [file], title: 'FaceUp' }); } catch { /* Пользователь мог закрыть окно выбора. */ }
+});
+deletePhoto.addEventListener('click', async () => {
+  if (!currentPhoto || !confirm('Удалить этот снимок из хранилища FaceUp?')) return;
+  try {
+    await removePhoto(currentPhoto.id); const nextPhoto = await loadLatestPhoto(); viewer.hidden = true;
+    if (nextPhoto) setCurrentPhoto(nextPhoto); else { currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; }
+    message.textContent = 'Снимок удалён из FaceUp.';
+  } catch { message.textContent = 'Не удалось удалить снимок.'; }
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
