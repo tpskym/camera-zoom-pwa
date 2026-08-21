@@ -170,9 +170,10 @@ function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
 function togglePhotoFullscreen() {
   const entering = !viewer.classList.contains('is-photo-fullscreen');
-  viewer.classList.toggle('is-photo-fullscreen', entering);
-  if (entering && document.fullscreenEnabled && !document.fullscreenElement) viewer.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
-  if (!entering && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (!entering) { viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); return; }
+  const showFullscreenPhoto = () => viewer.classList.add('is-photo-fullscreen');
+  if (document.fullscreenEnabled && !document.fullscreenElement) viewer.requestFullscreen({ navigationUI: 'hide' }).then(showFullscreenPhoto).catch(showFullscreenPhoto);
+  else showFullscreenPhoto();
 }
 function closeViewer() { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
 function openViewer() { if (currentPhoto) { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
