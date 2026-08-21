@@ -8,6 +8,7 @@ const zoomArcControl = document.querySelector('#zoomArcControl');
 const zoomLineProgress = document.querySelector('#zoomLineProgress');
 const zoomDialWheel = document.querySelector('#zoomDialWheel');
 const zoomDialCurrent = document.querySelector('#zoomDialCurrent');
+const zoomDialIndicator = document.querySelector('#zoomDialIndicator');
 const controls = document.querySelector('#controls');
 const panel = document.querySelector('#startPanel');
 const message = document.querySelector('#message');
@@ -29,7 +30,7 @@ let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pin
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
 const ZOOM_SNAP_POINTS = [2, 3, 5, 7];
-const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 190; const DIAL_DEGREES_PER_OCTAVE = 20;
+const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 190; const DIAL_START_ANGLE = 195; const DIAL_END_ANGLE = 345;
 function photoDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -110,6 +111,7 @@ function dialPoint(radius, angle) {
   const radians = angle * Math.PI / 180;
   return { x: DIAL_CENTER_X + radius * Math.cos(radians), y: DIAL_CENTER_Y + radius * Math.sin(radians) };
 }
+function dialAngleForZoom(value) { return DIAL_START_ANGLE + (Math.min(10, Math.max(1, value)) - 1) / 9 * (DIAL_END_ANGLE - DIAL_START_ANGLE); }
 function createDialNode(name, attributes, text) {
   const node = document.createElementNS('http://www.w3.org/2000/svg', name);
   Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
@@ -119,12 +121,12 @@ function createDialNode(name, attributes, text) {
 function buildZoomDial() {
   const fragment = document.createDocumentFragment();
   for (let index = 0; index <= 60; index += 1) {
-    const value = 1 + index * 0.2; const angle = 270 + DIAL_DEGREES_PER_OCTAVE * Math.log2(value);
+    const value = 1 + index * 9 / 60; const angle = dialAngleForZoom(value);
     const major = index % 5 === 0; const outer = dialPoint(154, angle); const inner = dialPoint(major ? 132 : 143, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: major ? 'zoom-dial-tick major' : 'zoom-dial-tick' }));
   }
   [1, 2, 3, 5, 7, 10].forEach(value => {
-    const angle = 270 + DIAL_DEGREES_PER_OCTAVE * Math.log2(value); const outer = dialPoint(154, angle); const inner = dialPoint(128, angle);
+    const angle = dialAngleForZoom(value); const outer = dialPoint(154, angle); const inner = dialPoint(128, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick major' }));
     const point = dialPoint(112, angle);
     fragment.append(createDialNode('text', { x: point.x, y: point.y, class: 'zoom-dial-label' }, `${value}x`));
@@ -132,7 +134,8 @@ function buildZoomDial() {
   zoomDialWheel.replaceChildren(fragment);
 }
 function updateZoomDial(value) {
-  zoomDialWheel.setAttribute('transform', `rotate(${-DIAL_DEGREES_PER_OCTAVE * Math.log2(value)} ${DIAL_CENTER_X} ${DIAL_CENTER_Y})`);
+  const angle = dialAngleForZoom(value); const outer = dialPoint(157, angle); const inner = dialPoint(129, angle);
+  zoomDialIndicator.setAttribute('x1', outer.x); zoomDialIndicator.setAttribute('y1', outer.y); zoomDialIndicator.setAttribute('x2', inner.x); zoomDialIndicator.setAttribute('y2', inner.y);
   zoomDialCurrent.textContent = formatCameraZoom(value);
 }
 function updateCameraPreviewZoom(logicalZoom) {
