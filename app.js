@@ -29,7 +29,7 @@ let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pin
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
 const ZOOM_SNAP_POINTS = [2, 3, 5, 7];
-const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 190; const DIAL_START_ANGLE = 270; const DIAL_END_ANGLE = 345;
+const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 190; const DIAL_START_ANGLE = 210; const DIAL_END_ANGLE = 330;
 function photoDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
