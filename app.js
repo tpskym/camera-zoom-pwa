@@ -293,7 +293,9 @@ function moveThumbnailHighlightToReference() {
     const bounds = thumbnail.getBoundingClientRect(); const nextDistance = Math.abs(bounds.left + bounds.width / 2 - thumbnailReferenceX);
     if (nextDistance < distance) { closest = thumbnail; distance = nextDistance; }
   });
-  if (closest) selectThumbnail(closest.dataset.photoId, 'none');
+  if (!closest) return;
+  const photo = thumbnailPhotos.get(closest.dataset.photoId); selectThumbnail(closest.dataset.photoId, 'none');
+  if (photo && photo.id !== currentPhoto?.id) { setCurrentPhoto(photo, 'none'); resetViewerZoom(); }
 }
 function startThumbnailInertia(initialVelocity) {
   stopThumbnailInertia(); let velocity = initialVelocity; let lastFrame;
