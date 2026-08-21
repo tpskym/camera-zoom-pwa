@@ -108,7 +108,7 @@ function showPhoto(photo, direction) {
   window.clearTimeout(transitionTimer); if (transitionUrl) URL.revokeObjectURL(transitionUrl); transitionUrl = URL.createObjectURL(currentPhoto.blob);
   transitionImage.src = transitionUrl; transitionImage.hidden = false; transitionImage.className = `transition-image slide-out-${direction}`;
   setCurrentPhoto(photo); resetViewerZoom(); previewImage.classList.remove('slide-in-left', 'slide-in-right'); void previewImage.offsetWidth; previewImage.classList.add(`slide-in-${direction === 'left' ? 'right' : 'left'}`);
-  transitionTimer = window.setTimeout(() => { transitionImage.hidden = true; transitionImage.className = 'transition-image'; previewImage.classList.remove('slide-in-left', 'slide-in-right'); if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } }, 260);
+  transitionTimer = window.setTimeout(async () => { try { await previewImage.decode(); } catch { /* Изображение всё равно отобразится по событию load. */ } transitionImage.hidden = true; transitionImage.className = 'transition-image'; previewImage.classList.remove('slide-in-left', 'slide-in-right'); if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } }, 260);
 }
 function clearSwipePreview() {
   window.clearTimeout(swipeTimer); ++swipeRequest; previewImage.style.transition = ''; updateViewerTransform(); transitionImage.hidden = true; transitionImage.style.transition = ''; transitionImage.style.transform = ''; transitionImage.className = 'transition-image';
@@ -135,7 +135,7 @@ function finishSwipe() {
   const target = swipeTarget; const direction = swipeDirection; const stageWidth = photoStage.getBoundingClientRect().width;
   previewImage.style.transition = 'transform .18s ease-out'; transitionImage.style.transition = 'transform .18s ease-out';
   previewImage.style.transform = `translate(${direction === 'left' ? -stageWidth : stageWidth}px, 0) scale(1)`; transitionImage.style.transform = 'translate(0, 0)';
-  swipeTimer = window.setTimeout(() => { setCurrentPhoto(target); clearSwipePreview(); resetViewerZoom(); }, 190);
+  swipeTimer = window.setTimeout(async () => { setCurrentPhoto(target); try { await previewImage.decode(); } catch { /* Переходный слой сохранит изображение до загрузки. */ } if (currentPhoto?.id === target.id) { clearSwipePreview(); resetViewerZoom(); } }, 190);
 }
 async function autoStartCamera() {
   if (!navigator.permissions?.query) { panel.hidden = false; return; }
