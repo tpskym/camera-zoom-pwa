@@ -27,7 +27,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let viewerSingleTapTimer; let fullscreenPhotoRect; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let viewerSingleTapTimer; let fullscreenPhotoRect; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let zoomDialAlignTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -175,7 +175,7 @@ function animateFullscreenPhotoResize(from) {
     const offsetX = from.left - to.left; const offsetY = from.top - to.top;
     if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) return;
     window.clearTimeout(viewerZoomAnimationTimer); previewImage.style.transition = 'none'; previewImage.style.transformOrigin = 'top left'; previewImage.style.transform = `matrix(${scaleX}, 0, 0, ${scaleY}, ${offsetX}, ${offsetY})`;
-    requestAnimationFrame(() => { previewImage.style.transition = 'transform .24s cubic-bezier(.2,.8,.2,1)'; previewImage.style.transform = 'matrix(1, 0, 0, 1, 0, 0)'; viewerZoomAnimationTimer = window.setTimeout(() => { previewImage.style.transition = ''; previewImage.style.transformOrigin = ''; updateViewerTransform(); }, 260); });
+    requestAnimationFrame(() => { previewImage.style.transition = 'transform .48s cubic-bezier(.22,.61,.36,1)'; previewImage.style.transform = 'matrix(1, 0, 0, 1, 0, 0)'; viewerZoomAnimationTimer = window.setTimeout(() => { previewImage.style.transition = ''; previewImage.style.transformOrigin = ''; updateViewerTransform(); }, 510); });
   });
 }
 function togglePhotoFullscreen() {
@@ -186,8 +186,8 @@ function togglePhotoFullscreen() {
   if (document.fullscreenEnabled && !document.fullscreenElement) viewer.requestFullscreen({ navigationUI: 'hide' }).then(showFullscreenPhoto).catch(showFullscreenPhoto);
   else showFullscreenPhoto();
 }
-function closeViewer() { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
-function openViewer() { if (currentPhoto) { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
+function closeViewer() { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; video.style.visibility = ''; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
+function openViewer() { if (currentPhoto) { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; video.style.visibility = 'hidden'; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
 function showPhoto(photo, direction) {
   if (!currentPhoto || viewer.hidden || viewerScale > 1 || currentPhoto.id === photo.id) { setCurrentPhoto(photo); resetViewerZoom(); return; }
@@ -250,8 +250,8 @@ start.addEventListener('click', async () => { try { await openCamera(); } catch 
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
 zoom.addEventListener('input', event => setZoom(event.target.value));
 function alignZoomDialToControls() { const clip = Math.max(0, zoomDial.getBoundingClientRect().bottom - controls.getBoundingClientRect().top); zoomArcControl.style.setProperty('--zoom-dial-panel-clip', `${Math.ceil(clip)}px`); }
-function openZoomArc() { window.clearTimeout(zoomCollapseTimer); controls.classList.add('zoom-adjusting'); zoomArcControl.classList.add('is-expanded'); requestAnimationFrame(alignZoomDialToControls); }
-function closeZoomArc(immediate = false) { window.clearTimeout(zoomCollapseTimer); const collapse = () => { zoomArcControl.classList.remove('is-expanded'); controls.classList.remove('zoom-adjusting'); }; if (immediate) collapse(); else zoomCollapseTimer = window.setTimeout(collapse, 450); }
+function openZoomArc() { window.clearTimeout(zoomCollapseTimer); window.clearTimeout(zoomDialAlignTimer); controls.classList.add('zoom-adjusting'); zoomArcControl.classList.add('is-expanded'); zoomDialAlignTimer = window.setTimeout(alignZoomDialToControls, 320); }
+function closeZoomArc(immediate = false) { window.clearTimeout(zoomCollapseTimer); window.clearTimeout(zoomDialAlignTimer); const collapse = () => { zoomArcControl.classList.remove('is-expanded'); controls.classList.remove('zoom-adjusting'); }; if (immediate) collapse(); else zoomCollapseTimer = window.setTimeout(collapse, 450); }
 function setZoomFromPointer(event) {
   const bounds = zoomArcControl.getBoundingClientRect(); const shift = (zoomDragStartX - event.clientX) / bounds.width * 9;
   setZoom(Math.max(1, Math.min(10, zoomDragStartValue + shift)));
