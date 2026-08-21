@@ -29,7 +29,7 @@ let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pin
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
 const ZOOM_SNAP_POINTS = [2, 3, 5, 7];
-const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 260; const DIAL_START_ANGLE = 210; const DIAL_END_ANGLE = 330;
+const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 330; const DIAL_START_ANGLE = 210; const DIAL_END_ANGLE = 330;
 function photoDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -125,10 +125,10 @@ function buildZoomDial() {
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick' }));
   }
   [1, 2, 3, 5, 7, 10].forEach(value => {
-    const angle = dialAngleForZoom(value); const outer = dialPoint(174, angle); const inner = dialPoint(146, angle);
+    const angle = dialAngleForZoom(value); const outer = dialPoint(174, angle); const inner = dialPoint(164, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick major' }));
     const point = dialPoint(128, angle);
-    fragment.append(createDialNode('text', { x: point.x, y: point.y, class: 'zoom-dial-label', 'data-zoom': value }, `${value}x`));
+    fragment.append(createDialNode('text', { x: point.x, y: point.y, class: 'zoom-dial-label', transform: `rotate(${angle + 90} ${point.x} ${point.y})` }, `${value}x`));
   });
   zoomDialWheel.replaceChildren(fragment);
 }

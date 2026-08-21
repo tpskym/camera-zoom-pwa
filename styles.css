@@ -12,6 +12,7 @@
 .zoom-arc-control { z-index:1; left:0; right:0; }.zoom-dial { bottom:-70px; aspect-ratio:360 / 260; }
 .zoom-line-track #zoomLineValue { font-size:21px; }.zoom-dial { clip-path:inset(0 0 66px 0); }
 .zoom-line-track #zoomLineValue { font-size:15px; }
+.zoom-dial { bottom:6px; clip-path:none; }
 .zoom-dial-current { display:block; pointer-events:none; }
 .zoom-line-track { top:9px; width:45px; height:45px; }.zoom-arc-control input[type="range"] { top:9px; width:45px; height:45px; }
 * { box-sizing:border-box; } body { margin:0; overflow:hidden; background:#0b0d12; }
