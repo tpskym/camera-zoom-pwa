@@ -128,7 +128,7 @@ function buildZoomDial() {
   [1, 2, 3, 5, 7, 10].forEach(value => {
     const angle = dialAngleForZoom(value); const outer = dialPoint(174, angle); const inner = dialPoint(164, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick major' }));
-    const point = dialPoint(128, angle);
+    const point = dialPoint(146, angle);
     fragment.append(createDialNode('text', { x: point.x, y: point.y, class: 'zoom-dial-label', transform: `rotate(${angle + 90} ${point.x} ${point.y})` }, `${value}x`));
   });
   zoomDialWheel.replaceChildren(fragment);
