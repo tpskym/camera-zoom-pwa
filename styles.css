@@ -9,6 +9,8 @@
 .zoom-dial-surface { stroke:#ffffff16; }.zoom-dial-rim { stroke:#ffffff10; }.zoom-dial-tick { stroke-opacity:.42; }.zoom-dial-tick.major { stroke-opacity:.78; }.zoom-dial-indicator-dot { fill:#e7cf58; filter:drop-shadow(0 0 5px #e7cf58cc); pointer-events:visiblePainted; }.zoom-dial-current { display:none; }.camera-app, .camera-app button, .zoom-arc-control { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
 .zoom-dial { aspect-ratio:360 / 160; }
 .zoom-line-track #zoomLineValue { background:transparent; box-shadow:none; border-radius:0; }
+.zoom-arc-control { z-index:1; left:0; right:0; }.zoom-dial { bottom:-70px; aspect-ratio:360 / 260; }
+.zoom-line-track #zoomLineValue { font-size:21px; }.zoom-dial { clip-path:inset(0 0 78px 0); }
 * { box-sizing:border-box; } body { margin:0; overflow:hidden; background:#0b0d12; }
 .camera-app { height:100dvh; position:relative; display:grid; place-items:center; background:#000; }
 .flash { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; background:#fff; }.flash.active { animation:shutter-flash .22s ease-out; } @keyframes shutter-flash { 0% { opacity:0; } 30% { opacity:.86; } 100% { opacity:0; } }
