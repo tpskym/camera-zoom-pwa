@@ -25,7 +25,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailScrollFrame; let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -328,20 +328,6 @@ thumbnailStrip.addEventListener('touchend', event => {
   thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0;
 }, { passive: true });
 thumbnailStrip.addEventListener('touchcancel', () => { thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0; }, { passive: true });
-thumbnailStrip.addEventListener('scroll', () => {
-  if (thumbnailScrollFrame || viewerScale > 1) return;
-  thumbnailScrollFrame = requestAnimationFrame(() => {
-    thumbnailScrollFrame = undefined;
-    const stripBounds = thumbnailStrip.getBoundingClientRect(); const center = stripBounds.left + stripBounds.width / 2;
-    let closest; let distance = Infinity;
-    thumbnailStrip.querySelectorAll('.gallery-thumbnail').forEach(thumbnail => {
-      const bounds = thumbnail.getBoundingClientRect(); const nextDistance = Math.abs(bounds.left + bounds.width / 2 - center);
-      if (nextDistance < distance) { closest = thumbnail; distance = nextDistance; }
-    });
-    const photo = closest && thumbnailPhotos.get(closest.dataset.photoId);
-    if (photo && photo.id !== currentPhoto?.id) setCurrentPhoto(photo, 'none');
-  });
-}, { passive: true });
 sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
   if (!navigator.canShare?.({ files: [file] })) { message.textContent = 'На этом устройстве используйте «Сохранить файл».'; return; }
