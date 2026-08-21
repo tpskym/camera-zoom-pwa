@@ -24,7 +24,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailScrollFrame; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailScrollFrame; let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -311,8 +311,23 @@ previewImage.addEventListener('touchend', event => {
 });
 thumbnailStrip.addEventListener('touchstart', event => {
   const thumbnail = event.target.closest?.('.gallery-thumbnail'); const photo = thumbnail && thumbnailPhotos.get(thumbnail.dataset.photoId);
-  if (event.touches.length === 1 && viewerScale === 1 && photo && photo.id !== currentPhoto?.id) setCurrentPhoto(photo, 'none');
+  if (event.touches.length !== 1 || viewerScale > 1 || !photo) return;
+  if (photo.id !== currentPhoto?.id) setCurrentPhoto(photo, 'none');
+  thumbnailDragStartX = event.touches[0].clientX; thumbnailDragStartScrollLeft = thumbnailStrip.scrollLeft; thumbnailDragLastX = thumbnailDragStartX; thumbnailDragLastTime = performance.now(); thumbnailDragVelocity = 0;
 }, { passive: true });
+thumbnailStrip.addEventListener('touchmove', event => {
+  if (event.touches.length !== 1 || thumbnailDragStartX === undefined || viewerScale > 1) return;
+  const touch = event.touches[0]; const now = performance.now(); const offset = touch.clientX - thumbnailDragStartX; const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth);
+  thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, thumbnailDragStartScrollLeft + offset));
+  thumbnailDragVelocity = (touch.clientX - thumbnailDragLastX) / Math.max(1, now - thumbnailDragLastTime); thumbnailDragLastX = touch.clientX; thumbnailDragLastTime = now; event.preventDefault();
+}, { passive: false });
+thumbnailStrip.addEventListener('touchend', event => {
+  if (thumbnailDragStartX === undefined) return;
+  const inertia = Math.max(-720, Math.min(720, thumbnailDragVelocity * 280)); const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth);
+  thumbnailStrip.scrollTo({ left: Math.max(0, Math.min(maxScroll, thumbnailStrip.scrollLeft + inertia)), behavior: 'smooth' });
+  thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0;
+}, { passive: true });
+thumbnailStrip.addEventListener('touchcancel', () => { thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0; }, { passive: true });
 thumbnailStrip.addEventListener('scroll', () => {
   if (thumbnailScrollFrame || viewerScale > 1) return;
   thumbnailScrollFrame = requestAnimationFrame(() => {
