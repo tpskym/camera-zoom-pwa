@@ -110,7 +110,7 @@ function zoomPhotoAt(scale, clientX, clientY) {
 function settleViewerZoom() {
   if (viewerScale >= 1) return;
   previewImage.style.transition = 'transform .18s cubic-bezier(.2,.8,.2,1)';
-  viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform();
+  viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); navigator.vibrate?.(12);
   window.setTimeout(() => { previewImage.style.transition = ''; }, 190);
 }
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
