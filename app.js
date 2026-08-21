@@ -8,6 +8,7 @@ const zoomLineProgress = document.querySelector('#zoomLineProgress');
 const zoomLineValue = document.querySelector('#zoomLineValue');
 const zoomDialWheel = document.querySelector('#zoomDialWheel');
 const zoomDialCurrent = document.querySelector('#zoomDialCurrent');
+const zoomDial = document.querySelector('.zoom-dial');
 const controls = document.querySelector('#controls');
 const panel = document.querySelector('#startPanel');
 const message = document.querySelector('#message');
@@ -26,7 +27,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let viewerSingleTapTimer; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let viewerSingleTapTimer; let fullscreenPhotoRect; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -168,10 +169,20 @@ function settleViewerZoom() {
 }
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
+function animateFullscreenPhotoResize(from) {
+  requestAnimationFrame(() => {
+    const to = photoStage.getBoundingClientRect(); const scaleX = from.width / to.width; const scaleY = from.height / to.height;
+    const offsetX = from.left - to.left; const offsetY = from.top - to.top;
+    if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) return;
+    window.clearTimeout(viewerZoomAnimationTimer); previewImage.style.transition = 'none'; previewImage.style.transformOrigin = 'top left'; previewImage.style.transform = `matrix(${scaleX}, 0, 0, ${scaleY}, ${offsetX}, ${offsetY})`;
+    requestAnimationFrame(() => { previewImage.style.transition = 'transform .24s cubic-bezier(.2,.8,.2,1)'; previewImage.style.transform = 'matrix(1, 0, 0, 1, 0, 0)'; viewerZoomAnimationTimer = window.setTimeout(() => { previewImage.style.transition = ''; previewImage.style.transformOrigin = ''; updateViewerTransform(); }, 260); });
+  });
+}
 function togglePhotoFullscreen() {
   const entering = !viewer.classList.contains('is-photo-fullscreen');
   if (!entering) { viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); return; }
-  const showFullscreenPhoto = () => viewer.classList.add('is-photo-fullscreen');
+  fullscreenPhotoRect = photoStage.getBoundingClientRect();
+  const showFullscreenPhoto = () => { viewer.classList.add('is-photo-fullscreen'); if (viewerScale === 1 && fullscreenPhotoRect) animateFullscreenPhotoResize(fullscreenPhotoRect); fullscreenPhotoRect = undefined; };
   if (document.fullscreenEnabled && !document.fullscreenElement) viewer.requestFullscreen({ navigationUI: 'hide' }).then(showFullscreenPhoto).catch(showFullscreenPhoto);
   else showFullscreenPhoto();
 }
@@ -238,7 +249,8 @@ async function openCamera() {
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
 zoom.addEventListener('input', event => setZoom(event.target.value));
-function openZoomArc() { window.clearTimeout(zoomCollapseTimer); controls.classList.add('zoom-adjusting'); zoomArcControl.classList.add('is-expanded'); }
+function alignZoomDialToControls() { const clip = Math.max(0, zoomDial.getBoundingClientRect().bottom - controls.getBoundingClientRect().top); zoomArcControl.style.setProperty('--zoom-dial-panel-clip', `${Math.ceil(clip)}px`); }
+function openZoomArc() { window.clearTimeout(zoomCollapseTimer); controls.classList.add('zoom-adjusting'); zoomArcControl.classList.add('is-expanded'); requestAnimationFrame(alignZoomDialToControls); }
 function closeZoomArc(immediate = false) { window.clearTimeout(zoomCollapseTimer); const collapse = () => { zoomArcControl.classList.remove('is-expanded'); controls.classList.remove('zoom-adjusting'); }; if (immediate) collapse(); else zoomCollapseTimer = window.setTimeout(collapse, 450); }
 function setZoomFromPointer(event) {
   const bounds = zoomArcControl.getBoundingClientRect(); const shift = (zoomDragStartX - event.clientX) / bounds.width * 9;
