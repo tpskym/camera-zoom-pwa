@@ -20,7 +20,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomSnap; let cameraZoomSnap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let cameraZoomSnap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -101,15 +101,13 @@ function snapZoom(value, lockedSnap) {
   return ZOOM_SNAP_POINTS.find(point => Math.abs(value - point) <= 0.12);
 }
 function updateViewerTransform() { previewImage.style.transform = `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`; }
-function resetViewerZoom() { viewerZoomSnap = undefined; viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
+function resetViewerZoom() { viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
 function constrainViewerPosition() {
   const stage = photoStage.getBoundingClientRect(); const extraScale = Math.max(0, viewerScale - 1); const maxX = stage.width * extraScale / 2; const maxY = stage.height * extraScale / 2;
   viewerX = Math.max(-maxX, Math.min(maxX, viewerX)); viewerY = Math.max(-maxY, Math.min(maxY, viewerY));
 }
 function zoomPhotoAt(scale, clientX, clientY) {
-  const requestedScale = Math.min(10, Math.max(0.86, scale)); const nextSnap = snapZoom(requestedScale, viewerZoomSnap);
-  if (nextSnap && nextSnap !== viewerZoomSnap) navigator.vibrate?.(8);
-  viewerZoomSnap = nextSnap; const nextScale = nextSnap || requestedScale; const stage = photoStage.getBoundingClientRect();
+  const nextScale = Math.min(10, Math.max(0.86, scale)); const stage = photoStage.getBoundingClientRect();
   const focalX = clientX - stage.left - stage.width / 2; const focalY = clientY - stage.top - stage.height / 2;
   const ratio = nextScale / viewerScale; viewerX = focalX - ratio * (focalX - viewerX); viewerY = focalY - ratio * (focalY - viewerY);
   viewerScale = nextScale; if (viewerScale < 1) { viewerX = 0; viewerY = 0; } else constrainViewerPosition(); updateViewerTransform();
