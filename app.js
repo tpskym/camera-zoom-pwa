@@ -251,7 +251,7 @@ start.addEventListener('click', async () => { try { await openCamera(); } catch 
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
 zoom.addEventListener('input', event => setZoom(event.target.value));
 function openZoomArc() { window.clearTimeout(zoomCollapseTimer); controls.classList.add('zoom-adjusting'); zoomArcControl.classList.add('is-expanded'); }
-function closeZoomArc() { window.clearTimeout(zoomCollapseTimer); zoomCollapseTimer = window.setTimeout(() => { zoomArcControl.classList.remove('is-expanded'); controls.classList.remove('zoom-adjusting'); }, 450); }
+function closeZoomArc(immediate = false) { window.clearTimeout(zoomCollapseTimer); const collapse = () => { zoomArcControl.classList.remove('is-expanded'); controls.classList.remove('zoom-adjusting'); }; if (immediate) collapse(); else zoomCollapseTimer = window.setTimeout(collapse, 450); }
 function setZoomFromPointer(event) {
   const bounds = zoomArcControl.getBoundingClientRect(); const shift = (zoomDragStartX - event.clientX) / bounds.width * 9;
   setZoom(Math.max(1, Math.min(10, zoomDragStartValue + shift)));
@@ -260,7 +260,7 @@ function setZoomFromPointer(event) {
 // slider maps a tap to a new value before it is dragged, which made a 1× tap
 // jump to a value such as 7×.  Here a tap preserves the current value and only
 // horizontal movement changes the dial.
-zoomArcControl.addEventListener('pointerdown', event => { if (zoom.disabled) return; event.preventDefault(); activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoomArcControl.setPointerCapture?.(event.pointerId); openZoomArc(); });
+zoomArcControl.addEventListener('pointerdown', event => { const compactTarget = event.target.closest?.('.zoom-line-track'); const dialTarget = event.target.closest?.('.zoom-dial-surface, .zoom-dial-rim, .zoom-dial-tick, .zoom-dial-label, .zoom-dial-indicator, .zoom-dial-indicator-dot'); if (zoom.disabled || (!compactTarget && !(zoomArcControl.classList.contains('is-expanded') && dialTarget))) return; event.preventDefault(); activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoomArcControl.setPointerCapture?.(event.pointerId); openZoomArc(); });
 zoomArcControl.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) { event.preventDefault(); if (Math.abs(event.clientX - zoomDragStartX) > 3) setZoomFromPointer(event); } });
 zoomArcControl.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) activeZoomPointer = undefined; });
 zoomArcControl.addEventListener('pointercancel', event => { if (event.pointerId === activeZoomPointer) activeZoomPointer = undefined; });
@@ -269,6 +269,7 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 buildZoomDial(); updateZoomDial(1);
 capture.addEventListener('click', () => {
   if (!video.videoWidth) return;
+  closeZoomArc(true);
   flashScreen(); navigator.vibrate?.(10);
   const canvas = document.createElement('canvas'); const width = video.videoWidth; const height = video.videoHeight; const z = cameraRenderZoom;
   canvas.width = width; canvas.height = height; const context = canvas.getContext('2d');
