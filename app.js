@@ -20,7 +20,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -111,7 +111,7 @@ function showPhoto(photo, direction) {
   transitionTimer = window.setTimeout(() => { transitionImage.hidden = true; transitionImage.className = 'transition-image'; previewImage.classList.remove('slide-in-left', 'slide-in-right'); if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } }, 260);
 }
 function clearSwipePreview() {
-  previewImage.style.transition = ''; updateViewerTransform(); transitionImage.hidden = true; transitionImage.style.transition = ''; transitionImage.style.transform = ''; transitionImage.className = 'transition-image';
+  window.clearTimeout(swipeTimer); ++swipeRequest; previewImage.style.transition = ''; updateViewerTransform(); transitionImage.hidden = true; transitionImage.style.transition = ''; transitionImage.style.transform = ''; transitionImage.className = 'transition-image';
   if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } swipeTarget = undefined; swipeDirection = undefined;
 }
 function positionSwipePreview(offset) {
@@ -127,11 +127,15 @@ async function prepareSwipeTarget(direction) {
   swipeTarget = photo; transitionUrl = URL.createObjectURL(photo.blob); transitionImage.src = transitionUrl; transitionImage.hidden = false; positionSwipePreview(swipeOffsetX);
 }
 function finishSwipe() {
-  if (!swipeTarget || Math.abs(swipeOffsetX) < 50) { clearSwipePreview(); return; }
+  if (!swipeTarget || Math.abs(swipeOffsetX) < 50) {
+    const stageWidth = photoStage.getBoundingClientRect().width; previewImage.style.transition = 'transform .18s ease-out'; previewImage.style.transform = 'translate(0, 0) scale(1)';
+    if (swipeTarget) { transitionImage.style.transition = 'transform .18s ease-out'; transitionImage.style.transform = `translate(${swipeDirection === 'left' ? stageWidth : -stageWidth}px, 0)`; }
+    swipeTimer = window.setTimeout(clearSwipePreview, 190); return;
+  }
   const target = swipeTarget; const direction = swipeDirection; const stageWidth = photoStage.getBoundingClientRect().width;
   previewImage.style.transition = 'transform .18s ease-out'; transitionImage.style.transition = 'transform .18s ease-out';
   previewImage.style.transform = `translate(${direction === 'left' ? -stageWidth : stageWidth}px, 0) scale(1)`; transitionImage.style.transform = 'translate(0, 0)';
-  window.setTimeout(() => { clearSwipePreview(); setCurrentPhoto(target); resetViewerZoom(); }, 190);
+  swipeTimer = window.setTimeout(() => { setCurrentPhoto(target); clearSwipePreview(); resetViewerZoom(); }, 190);
 }
 async function autoStartCamera() {
   if (!navigator.permissions?.query) { panel.hidden = false; return; }
