@@ -20,10 +20,11 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomSnap; let cameraZoomSnap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
+const ZOOM_SNAP_POINTS = [2, 3, 5, 7];
 function photoDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -95,14 +96,20 @@ function showMessage(text, duration = 0) {
   window.clearTimeout(messageTimer); message.textContent = text;
   if (duration) messageTimer = window.setTimeout(() => { if (message.textContent === text) message.textContent = ''; }, duration);
 }
+function snapZoom(value, lockedSnap) {
+  if (lockedSnap && Math.abs(value - lockedSnap) <= 0.24) return lockedSnap;
+  return ZOOM_SNAP_POINTS.find(point => Math.abs(value - point) <= 0.12);
+}
 function updateViewerTransform() { previewImage.style.transform = `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`; }
-function resetViewerZoom() { viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
+function resetViewerZoom() { viewerZoomSnap = undefined; viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
 function constrainViewerPosition() {
   const stage = photoStage.getBoundingClientRect(); const extraScale = Math.max(0, viewerScale - 1); const maxX = stage.width * extraScale / 2; const maxY = stage.height * extraScale / 2;
   viewerX = Math.max(-maxX, Math.min(maxX, viewerX)); viewerY = Math.max(-maxY, Math.min(maxY, viewerY));
 }
 function zoomPhotoAt(scale, clientX, clientY) {
-  const nextScale = Math.min(5, Math.max(0.86, scale)); const stage = photoStage.getBoundingClientRect();
+  const requestedScale = Math.min(10, Math.max(0.86, scale)); const nextSnap = snapZoom(requestedScale, viewerZoomSnap);
+  if (nextSnap && nextSnap !== viewerZoomSnap) navigator.vibrate?.(8);
+  viewerZoomSnap = nextSnap; const nextScale = nextSnap || requestedScale; const stage = photoStage.getBoundingClientRect();
   const focalX = clientX - stage.left - stage.width / 2; const focalY = clientY - stage.top - stage.height / 2;
   const ratio = nextScale / viewerScale; viewerX = focalX - ratio * (focalX - viewerX); viewerY = focalY - ratio * (focalY - viewerY);
   viewerScale = nextScale; if (viewerScale < 1) { viewerX = 0; viewerY = 0; } else constrainViewerPosition(); updateViewerTransform();
@@ -159,7 +166,9 @@ async function autoStartCamera() {
 }
 
 function setZoom(value) {
-  const z = Number(value); video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
+  const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
+  if (nextSnap && nextSnap !== cameraZoomSnap) navigator.vibrate?.(8);
+  cameraZoomSnap = nextSnap; const z = nextSnap || requestedZoom; video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
   zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`;
 }
 async function openCamera() {
@@ -167,7 +176,7 @@ async function openCamera() {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('Ваш браузер не поддерживает доступ к камере.');
   stream?.getTracks().forEach(track => track.stop());
   stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
-  video.srcObject = stream; await video.play(); panel.hidden = true; capture.disabled = false; switchCamera.disabled = false; zoom.disabled = false; setZoom(1);
+  video.srcObject = stream; await video.play(); panel.hidden = true; capture.disabled = false; switchCamera.disabled = false; zoom.disabled = false; cameraZoomSnap = undefined; setZoom(1);
 }
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
