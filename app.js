@@ -318,12 +318,12 @@ thumbnailStrip.addEventListener('touchstart', event => {
 thumbnailStrip.addEventListener('touchmove', event => {
   if (event.touches.length !== 1 || thumbnailDragStartX === undefined || viewerScale > 1) return;
   const touch = event.touches[0]; const now = performance.now(); const offset = touch.clientX - thumbnailDragStartX; const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth);
-  thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, thumbnailDragStartScrollLeft + offset));
+  thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, thumbnailDragStartScrollLeft - offset));
   thumbnailDragVelocity = (touch.clientX - thumbnailDragLastX) / Math.max(1, now - thumbnailDragLastTime); thumbnailDragLastX = touch.clientX; thumbnailDragLastTime = now; event.preventDefault();
 }, { passive: false });
 thumbnailStrip.addEventListener('touchend', event => {
   if (thumbnailDragStartX === undefined) return;
-  const inertia = Math.max(-720, Math.min(720, thumbnailDragVelocity * 280)); const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth);
+  const inertia = Math.max(-720, Math.min(720, -thumbnailDragVelocity * 280)); const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth);
   thumbnailStrip.scrollTo({ left: Math.max(0, Math.min(maxScroll, thumbnailStrip.scrollLeft + inertia)), behavior: 'smooth' });
   thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0;
 }, { passive: true });
