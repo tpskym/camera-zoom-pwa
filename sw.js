@@ -1,7 +1,7 @@
-const CACHE = 'faceup-v1.75.0';
+const CACHE = 'faceup-v1.77.0';
 const APP_ROOT = new URL('./', self.registration.scope).href;
 const INDEX_URL = new URL('./index.html', self.registration.scope).href;
-const APP_FILES = [APP_ROOT, INDEX_URL, new URL('./styles.css?v=1.75.0', self.registration.scope).href, new URL('./app.js?v=1.75.0', self.registration.scope).href, new URL('./manifest.webmanifest?v=1.75.0', self.registration.scope).href, new URL('./icon.svg', self.registration.scope).href, new URL('./icon-maskable.svg', self.registration.scope).href];
+const APP_FILES = [APP_ROOT, INDEX_URL, new URL('./styles.css?v=1.77.0', self.registration.scope).href, new URL('./app.js?v=1.77.0', self.registration.scope).href, new URL('./manifest.webmanifest?v=1.77.0', self.registration.scope).href, new URL('./icon.svg', self.registration.scope).href, new URL('./icon-maskable.svg', self.registration.scope).href];
 
 async function saveAppShell() {
   const cache = await caches.open(CACHE);
