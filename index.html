@@ -6,15 +6,15 @@
     <meta name="theme-color" content="#0b0d12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="manifest.webmanifest?v=1.42.0" />
-    <link rel="stylesheet" href="styles.css?v=1.42.0" />
+    <link rel="manifest" href="manifest.webmanifest?v=1.43.0" />
+    <link rel="stylesheet" href="styles.css?v=1.43.0" />
     <title>FaceUp</title>
   </head>
   <body>
     <main class="camera-app">
       <video id="video" autoplay playsinline muted aria-label="Изображение с фронтальной камеры"></video>
       <div id="flash" class="flash" aria-hidden="true"></div>
-      <section class="header"><h1>FaceUp <span class="version">v1.42.0</span></h1><button id="install" hidden>Установить</button></section>
+      <section class="header"><h1>FaceUp <span class="version">v1.43.0</span></h1><button id="install" hidden>Установить</button></section>
       <section id="startPanel" class="start-panel" hidden>
         <p>Откройте фронтальную камеру</p>
         <button id="start" class="primary">Включить камеру</button>
@@ -22,8 +22,14 @@
       </section>
       <section id="controls" class="controls">
         <label for="zoom">Зум <output id="zoomValue">1.0×</output></label>
-        <div class="zoom-marks" aria-hidden="true"><span style="left:11.111%">2×</span><span style="left:22.222%">3×</span><span style="left:44.444%">5×</span><span style="left:66.667%">7×</span></div>
-        <input id="zoom" type="range" min="1" max="10" value="1" step="0.1" aria-label="Зум камеры" disabled />
+        <div class="zoom-arc-control">
+          <svg viewBox="0 0 300 100" aria-hidden="true">
+            <path class="zoom-arc-track" d="M70 90 A80 80 0 0 1 230 90" pathLength="100" />
+            <path id="zoomArcProgress" class="zoom-arc-progress" d="M70 90 A80 80 0 0 1 230 90" pathLength="100" />
+            <g class="zoom-arc-stops"><g transform="translate(75 63)"><circle r="3" /><text y="-8">2×</text></g><g transform="translate(89 39)"><circle r="3" /><text y="-8">3×</text></g><g transform="translate(136 11)"><circle r="3" /><text y="16">5×</text></g><g transform="translate(190 21)"><circle r="3" /><text y="-8">7×</text></g></g>
+          </svg>
+          <input id="zoom" type="range" min="1" max="10" value="1" step="0.1" aria-label="Зум камеры" disabled />
+        </div>
         <div class="capture-row">
           <button id="lastPhoto" class="photo-thumb" hidden aria-label="Открыть последний снимок"><img id="lastPhotoImage" alt="Последний снимок" /></button>
           <button id="capture" class="shutter" aria-label="Сделать снимок" disabled><span></span></button>
@@ -41,6 +47,6 @@
         </footer>
       </section>
     </main>
-    <script src="app.js?v=1.42.0"></script>
+    <script src="app.js?v=1.43.0"></script>
   </body>
 </html>

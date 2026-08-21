@@ -4,6 +4,7 @@ const start = document.querySelector('#start');
 const switchCamera = document.querySelector('#switch');
 const zoom = document.querySelector('#zoom');
 const zoomValue = document.querySelector('#zoomValue');
+const zoomArcProgress = document.querySelector('#zoomArcProgress');
 const controls = document.querySelector('#controls');
 const panel = document.querySelector('#startPanel');
 const message = document.querySelector('#message');
@@ -167,7 +168,7 @@ function setZoom(value) {
   const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
   if (nextSnap && nextSnap !== cameraZoomSnap) navigator.vibrate?.(8);
   cameraZoomSnap = nextSnap; const z = nextSnap || requestedZoom; video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
-  zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`;
+  zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`; zoomArcProgress.style.strokeDasharray = `${(z - 1) / 9 * 100} 100`;
 }
 async function openCamera() {
   message.textContent = '';
