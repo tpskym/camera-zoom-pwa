@@ -200,7 +200,7 @@ window.addEventListener('popstate', () => {
 async function prepareOfflineMode() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    await navigator.serviceWorker.register('./sw.js?v=1.28.0');
+    await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
     await navigator.serviceWorker.ready;
     await navigator.storage?.persist?.();
   } catch { /* Приложение продолжит работать онлайн, если браузер не поддерживает PWA. */ }
