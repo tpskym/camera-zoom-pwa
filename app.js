@@ -15,6 +15,8 @@ const viewer = document.querySelector('#viewer');
 const photoStage = document.querySelector('.photo-stage');
 const previewImage = document.querySelector('#previewImage');
 const backToCamera = document.querySelector('#backToCamera');
+const previousPhoto = document.querySelector('#previousPhoto');
+const nextPhoto = document.querySelector('#nextPhoto');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
@@ -41,6 +43,12 @@ async function loadLatestPhoto() {
   const photo = await new Promise((resolve, reject) => { const request = db.transaction(STORE_NAME).objectStore(STORE_NAME).openCursor(null, 'prev'); request.onsuccess = () => resolve(request.result?.value); request.onerror = () => reject(request.error); });
   db.close(); return photo;
 }
+async function loadAdjacentPhoto(id, direction) {
+  const db = await photoDatabase(); const range = direction === 'previous' ? IDBKeyRange.upperBound(id, true) : IDBKeyRange.lowerBound(id, true);
+  const cursorDirection = direction === 'previous' ? 'prev' : 'next';
+  const photo = await new Promise((resolve, reject) => { const request = db.transaction(STORE_NAME).objectStore(STORE_NAME).openCursor(range, cursorDirection); request.onsuccess = () => resolve(request.result?.value); request.onerror = () => reject(request.error); });
+  db.close(); return photo;
+}
 async function removePhoto(id) {
   const db = await photoDatabase();
   await new Promise((resolve, reject) => { const tx = db.transaction(STORE_NAME, 'readwrite'); tx.objectStore(STORE_NAME).delete(id); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
@@ -49,6 +57,13 @@ async function removePhoto(id) {
 function setCurrentPhoto(photo) {
   currentPhoto = photo; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(photo.blob);
   lastPhotoImage.src = photoUrl; previewImage.src = photoUrl; downloadPhoto.href = photoUrl; downloadPhoto.download = `FaceUp-${photo.id}.jpg`; lastPhoto.hidden = false;
+  updatePhotoNavigation(photo.id);
+}
+async function updatePhotoNavigation(id) {
+  try {
+    const [previous, next] = await Promise.all([loadAdjacentPhoto(id, 'previous'), loadAdjacentPhoto(id, 'next')]);
+    if (currentPhoto?.id !== id) return; previousPhoto.disabled = !previous; nextPhoto.disabled = !next;
+  } catch { previousPhoto.disabled = true; nextPhoto.disabled = true; }
 }
 async function refreshLastPhoto() {
   try {
@@ -97,9 +112,11 @@ capture.addEventListener('click', () => {
   const canvas = document.createElement('canvas'); const width = video.videoWidth; const height = video.videoHeight; const z = Number(zoom.value);
   canvas.width = width; canvas.height = height; const context = canvas.getContext('2d');
   context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -z : z, z); context.drawImage(video, -width / 2, -height / 2, width, height);
-  canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); showMessage('Снимок сохранён в FaceUp.', 2500); } catch { showMessage('Не удалось сохранить снимок.'); } }, 'image/jpeg', 0.95);
+  canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); } catch { showMessage('Не удалось сохранить снимок.'); } }, 'image/jpeg', 0.95);
 });
-lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { viewer.hidden = true; });
+lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { viewer.hidden = true; refreshLastPhoto(); });
+previousPhoto.addEventListener('click', async () => { if (currentPhoto) { const photo = await loadAdjacentPhoto(currentPhoto.id, 'previous'); if (photo) setCurrentPhoto(photo); } });
+nextPhoto.addEventListener('click', async () => { if (currentPhoto) { const photo = await loadAdjacentPhoto(currentPhoto.id, 'next'); if (photo) setCurrentPhoto(photo); } });
 previewImage.addEventListener('touchstart', event => {
   if (event.touches.length === 2) { pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
   if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; event.preventDefault(); }
@@ -117,14 +134,14 @@ sharePhoto.addEventListener('click', async () => {
 deletePhoto.addEventListener('click', async () => {
   if (!currentPhoto || !confirm('Удалить этот снимок из хранилища FaceUp?')) return;
   try {
-    await removePhoto(currentPhoto.id); const nextPhoto = await loadLatestPhoto(); viewer.hidden = true;
-    if (nextPhoto) setCurrentPhoto(nextPhoto); else { currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; }
-    showMessage('Снимок удалён из FaceUp.', 2500);
+    const replacement = await loadAdjacentPhoto(currentPhoto.id, 'next') || await loadAdjacentPhoto(currentPhoto.id, 'previous');
+    await removePhoto(currentPhoto.id);
+    if (replacement) setCurrentPhoto(replacement); else { viewer.hidden = true; currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; }
   } catch { showMessage('Не удалось удалить снимок.'); }
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.17.0');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.19.0');
 refreshLastPhoto();
 window.addEventListener('pageshow', refreshLastPhoto);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLastPhoto(); });
