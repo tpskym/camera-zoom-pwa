@@ -6,15 +6,15 @@
     <meta name="theme-color" content="#0b0d12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="manifest.webmanifest?v=1.73.0" />
-    <link rel="stylesheet" href="styles.css?v=1.73.0" />
+    <link rel="manifest" href="manifest.webmanifest?v=1.75.0" />
+    <link rel="stylesheet" href="styles.css?v=1.75.0" />
     <title>FaceUp</title>
   </head>
   <body>
     <main class="camera-app">
       <video id="video" autoplay playsinline muted aria-label="Изображение с фронтальной камеры"></video>
       <div id="flash" class="flash" aria-hidden="true"></div>
-      <section class="header"><h1>FaceUp <span class="version">v1.73.0</span></h1><button id="install" hidden>Установить</button></section>
+      <section class="header"><h1>FaceUp <span class="version">v1.75.0</span></h1><button id="install" hidden>Установить</button></section>
       <section id="startPanel" class="start-panel" hidden>
         <p>Откройте фронтальную камеру</p>
         <button id="start" class="primary">Включить камеру</button>
@@ -36,7 +36,7 @@
           <g id="zoomDialWheel"></g>
           <line class="zoom-dial-indicator" x1="180" y1="86" x2="180" y2="108" />
           <circle class="zoom-dial-indicator-dot" cx="180" cy="80" r="7" />
-          <text id="zoomDialCurrent" class="zoom-dial-current" x="180" y="-4">1x</text>
+          <text id="zoomDialCurrent" class="zoom-dial-current" x="180" y="57">1x</text>
         </svg>
         <input id="zoom" type="range" min="1" max="10" value="1" step="0.1" aria-label="Зум камеры" disabled />
       </div>
@@ -51,6 +51,6 @@
         </footer>
       </section>
     </main>
-    <script src="app.js?v=1.73.0"></script>
+    <script src="app.js?v=1.75.0"></script>
   </body>
 </html>
