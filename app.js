@@ -26,7 +26,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let viewerSingleTapTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let viewerSingleTapTimer; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -170,10 +170,8 @@ function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
 function togglePhotoFullscreen() {
   const entering = !viewer.classList.contains('is-photo-fullscreen');
-  if (entering) viewer.style.setProperty('--fullscreen-photo-height', `${photoStage.getBoundingClientRect().height}px`);
-  else viewer.style.removeProperty('--fullscreen-photo-height');
   viewer.classList.toggle('is-photo-fullscreen', entering);
-  if (entering && document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  if (entering && document.fullscreenEnabled && !document.fullscreenElement) viewer.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
   if (!entering && document.fullscreenElement) document.exitFullscreen().catch(() => {});
 }
 function closeViewer() { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
@@ -220,9 +218,11 @@ async function autoStartCamera() {
 }
 
 function setZoom(value) {
-  const previousZoom = Number(zoom.value); const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
-  const z = nextSnap || requestedZoom; if (nextSnap && nextSnap !== cameraZoomSnap || (z === 1 || z === 10) && previousZoom !== z) navigator.vibrate?.(8);
-  cameraZoomSnap = nextSnap; updateCameraPreviewZoom(z);
+  const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
+  const z = nextSnap || requestedZoom; const endpointZone = z <= 1.04 ? 1 : z >= 9.88 ? 10 : undefined;
+  const enteredSnap = Boolean(nextSnap && nextSnap !== cameraZoomSnap); const enteredEndpoint = Boolean(endpointZone && endpointZone !== cameraZoomHapticZone);
+  if (enteredSnap || enteredEndpoint) navigator.vibrate?.(8);
+  cameraZoomSnap = nextSnap; cameraZoomHapticZone = endpointZone; updateCameraPreviewZoom(z);
   const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomLineProgress.style.width = `${zoomPercent}%`; zoomLineValue.textContent = formatCameraZoom(z); updateZoomDial(z);
 }
 async function openCamera() {
@@ -232,7 +232,7 @@ async function openCamera() {
   stream?.getTracks().forEach(track => track.stop());
   const videoConstraints = { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } };
   stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
-  video.srcObject = stream; await video.play(); panel.hidden = true; capture.disabled = false; switchCamera.disabled = false; zoom.disabled = false; zoom.value = 1; cameraZoomSnap = undefined; setZoom(1);
+  video.srcObject = stream; await video.play(); panel.hidden = true; capture.disabled = false; switchCamera.disabled = false; zoom.disabled = false; zoom.value = 1; cameraZoomSnap = undefined; cameraZoomHapticZone = 1; setZoom(1);
 }
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
