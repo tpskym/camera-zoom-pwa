@@ -27,11 +27,12 @@ const bottomVersion = document.querySelector('#bottomVersion');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
+const viewerNotice = document.querySelector('#viewerNotice');
 const deleteConfirmation = document.querySelector('#deleteConfirmation');
 const cancelDelete = document.querySelector('#cancelDelete');
 const confirmDelete = document.querySelector('#confirmDelete');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let isLeavingFullscreen; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let zoomDialAlignTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerNoticeTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let isLeavingFullscreen; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let zoomDialAlignTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -109,6 +110,7 @@ function showMessage(text, duration = 0) {
   window.clearTimeout(messageTimer); message.textContent = text;
   if (duration) messageTimer = window.setTimeout(() => { if (message.textContent === text) message.textContent = ''; }, duration);
 }
+function showViewerNotice(text, duration = 2600) { window.clearTimeout(viewerNoticeTimer); viewerNotice.textContent = text; viewerNotice.hidden = false; viewerNoticeTimer = window.setTimeout(() => { viewerNotice.hidden = true; }, duration); }
 function snapZoom(value, lockedSnap) {
   if (lockedSnap && Math.abs(value - lockedSnap) <= 0.24) return lockedSnap;
   return ZOOM_SNAP_POINTS.find(point => Math.abs(value - point) <= 0.12);
@@ -184,7 +186,7 @@ function togglePhotoFullscreen() {
   if (document.fullscreenEnabled && !document.fullscreenElement) viewer.requestFullscreen({ navigationUI: 'hide' }).then(showFullscreenPhoto).catch(showFullscreenPhoto);
   else showFullscreenPhoto();
 }
-function closeViewer({ discardHistory = false } = {}) { const exitsFullscreen = Boolean(document.fullscreenElement); isLeavingFullscreen = exitsFullscreen; deleteConfirmation.hidden = true; viewer.classList.remove('is-photo-fullscreen'); viewer.hidden = true; video.style.visibility = ''; zoomArcControl.hidden = false; resetViewerZoom(); if (exitsFullscreen) document.exitFullscreen().catch(() => { isLeavingFullscreen = false; }); if (discardHistory && history.state?.faceUpViewer) history.back(); refreshLastPhoto(); }
+function closeViewer({ discardHistory = false } = {}) { const exitsFullscreen = Boolean(document.fullscreenElement); isLeavingFullscreen = exitsFullscreen; window.clearTimeout(viewerNoticeTimer); viewerNotice.hidden = true; deleteConfirmation.hidden = true; viewer.classList.remove('is-photo-fullscreen'); viewer.hidden = true; video.style.visibility = ''; zoomArcControl.hidden = false; resetViewerZoom(); if (exitsFullscreen) document.exitFullscreen().catch(() => { isLeavingFullscreen = false; }); if (discardHistory && history.state?.faceUpViewer) history.back(); refreshLastPhoto(); }
 function openViewer() { if (currentPhoto) { viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; video.style.visibility = 'hidden'; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); togglePhotoFullscreen(); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
 function showPhoto(photo, direction) {
@@ -281,6 +283,7 @@ capture.addEventListener('click', () => {
   canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); } catch { showMessage('Не удалось сохранить снимок.'); } }, 'image/jpeg', 0.95);
 });
 lastPhoto.addEventListener('click', openViewer);
+downloadPhoto.addEventListener('click', () => { if (currentPhoto) showViewerNotice('Скачивание началось. Файл будет в «Загрузках».'); });
 previewImage.addEventListener('touchstart', event => {
   window.clearTimeout(viewerZoomAnimationTimer); previewImage.style.transition = '';
   if (event.touches.length === 2) { tapMoved = true; tapStartX = undefined; clearSwipePreview(); swipeStartX = undefined; swipeStartY = undefined; dragStartX = undefined; pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }

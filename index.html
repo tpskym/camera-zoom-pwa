@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#0b0d12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="manifest.webmanifest?v=1.130.0" />
-    <link rel="stylesheet" href="styles.css?v=1.130.0" />
+    <link rel="manifest" href="manifest.webmanifest?v=1.131.0" />
+    <link rel="stylesheet" href="styles.css?v=1.131.0" />
     <style>.viewer.is-photo-fullscreen { grid-template-rows:1fr auto auto; align-content:stretch; padding-top:0; }.viewer.is-photo-fullscreen .thumbnail-strip { display:flex; }.viewer.is-photo-fullscreen .viewer-actions { display:grid; }.zoom-dial { filter:none; }.zoom-dial-surface { fill:url(#zoomDialSurface); }.zoom-dial #zoomDialWheel { clip-path:inset(0 0 var(--zoom-dial-scale-clip, 4px) 0); }.edge-fill-image { position:absolute; inset:0; z-index:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }.photo-stage #previewImage { z-index:1; }.photo-stage .transition-image { z-index:2; }::view-transition-old(root),::view-transition-new(root) { animation-duration:.42s; animation-timing-function:cubic-bezier(.22,.61,.36,1); }</style>
     <title>FaceUp</title>
   </head>
@@ -29,7 +29,7 @@
           <button id="switch" class="switch-camera" aria-label="Сменить камеру" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h11l-2.5-2.5 1.4-1.4L19 7l-5.1 4.9-1.4-1.4L15 8H4V6zm16 12H9l2.5 2.5-1.4 1.4L5 17l5.1-4.9 1.4 1.4L9 16h11v2z"/></svg></button>
         </div>
       </section>
-      <span id="bottomVersion" class="bottom-version" aria-label="Версия FaceUp">v1.130.0</span>
+      <span id="bottomVersion" class="bottom-version" aria-label="Версия FaceUp">v1.131.0</span>
       <div id="zoomArcControl" class="zoom-arc-control">
         <div class="zoom-line-track" aria-hidden="true"><span id="zoomLineProgress"></span><span id="zoomLineValue" class="zoom-line-value">1x</span></div>
         <svg class="zoom-dial" viewBox="0 0 360 260" aria-hidden="true">
@@ -52,6 +52,7 @@
           <button id="sharePhoto" aria-label="Поделиться" title="Поделиться"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2" /><circle cx="6" cy="12" r="2" /><circle cx="18" cy="19" r="2" /><path d="m8 11 8-5M8 13l8 5" /></svg></button>
           <button id="deletePhoto" class="danger" aria-label="Удалить" title="Удалить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16m-10 4v5m4-5v5M9 7l1-3h4l1 3m-8 0 1 13h8l1-13" /></svg></button>
         </footer>
+        <p id="viewerNotice" class="viewer-notice" role="status" hidden></p>
         <section id="deleteConfirmation" class="delete-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="deleteConfirmationText" hidden>
           <div class="delete-confirmation-card">
             <p id="deleteConfirmationText">Удалить этот снимок из FaceUp?</p>
@@ -60,6 +61,6 @@
         </section>
       </section>
     </main>
-    <script src="app.js?v=1.130.0"></script>
+    <script src="app.js?v=1.131.0"></script>
   </body>
 </html>
