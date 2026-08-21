@@ -3,7 +3,6 @@ const flash = document.querySelector('#flash');
 const start = document.querySelector('#start');
 const switchCamera = document.querySelector('#switch');
 const zoom = document.querySelector('#zoom');
-const zoomValue = document.querySelector('#zoomValue');
 const zoomArcControl = document.querySelector('#zoomArcControl');
 const zoomLineProgress = document.querySelector('#zoomLineProgress');
 const zoomLineValue = document.querySelector('#zoomLineValue');
@@ -235,7 +234,7 @@ function setZoom(value) {
   const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
   if (nextSnap && nextSnap !== cameraZoomSnap) navigator.vibrate?.(8);
   cameraZoomSnap = nextSnap; const z = nextSnap || requestedZoom; requestedHardwareZoom = getHardwareZoomTarget(z); updateCameraPreviewZoom(z); synchronizeHardwareZoom();
-  const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomValue.value = formatCameraZoom(z); zoomValue.textContent = formatCameraZoom(z); zoomLineProgress.style.width = `${zoomPercent}%`; zoomLineValue.textContent = formatCameraZoom(z); updateZoomDial(z);
+  const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomLineProgress.style.width = `${zoomPercent}%`; zoomLineValue.textContent = formatCameraZoom(z); updateZoomDial(z);
 }
 async function openCamera() {
   message.textContent = '';
@@ -257,10 +256,14 @@ function setZoomFromPointer(event) {
   const bounds = zoomArcControl.getBoundingClientRect(); const shift = (zoomDragStartX - event.clientX) / bounds.width * 9;
   setZoom(Math.max(1, Math.min(10, zoomDragStartValue + shift)));
 }
-zoom.addEventListener('pointerdown', event => { event.preventDefault(); activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoom.setPointerCapture?.(event.pointerId); openZoomArc(); });
-zoom.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) { event.preventDefault(); setZoomFromPointer(event); } });
-zoom.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
-zoom.addEventListener('pointercancel', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
+// The visible control is deliberately handled by its wrapper.  A native range
+// slider maps a tap to a new value before it is dragged, which made a 1× tap
+// jump to a value such as 7×.  Here a tap preserves the current value and only
+// horizontal movement changes the dial.
+zoomArcControl.addEventListener('pointerdown', event => { if (zoom.disabled) return; event.preventDefault(); activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoomArcControl.setPointerCapture?.(event.pointerId); openZoomArc(); });
+zoomArcControl.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) { event.preventDefault(); setZoomFromPointer(event); } });
+zoomArcControl.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
+zoomArcControl.addEventListener('pointercancel', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
 buildZoomDial(); updateZoomDial(1);
 capture.addEventListener('click', () => {
   if (!video.videoWidth) return;
