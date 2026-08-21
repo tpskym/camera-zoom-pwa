@@ -19,6 +19,7 @@ const lastPhotoImage = document.querySelector('#lastPhotoImage');
 const viewer = document.querySelector('#viewer');
 const photoStage = document.querySelector('.photo-stage');
 const previewImage = document.querySelector('#previewImage');
+const edgeFillImage = document.querySelector('#edgeFillImage');
 const transitionImage = document.querySelector('#transitionImage');
 const thumbnailStrip = document.querySelector('#thumbnailStrip');
 const header = document.querySelector('.header');
@@ -197,18 +198,19 @@ function showPhoto(photo, direction) {
   transitionTimer = window.setTimeout(async () => { try { await previewImage.decode(); } catch { /* Изображение всё равно отобразится по событию load. */ } transitionImage.hidden = true; transitionImage.className = 'transition-image'; previewImage.classList.remove('slide-in-left', 'slide-in-right'); if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } }, 260);
 }
 function clearSwipePreview() {
-  window.clearTimeout(swipeTimer); ++swipeRequest; previewImage.style.transition = ''; updateViewerTransform(); transitionImage.hidden = true; transitionImage.style.transition = ''; transitionImage.style.transform = ''; transitionImage.className = 'transition-image';
+  window.clearTimeout(swipeTimer); ++swipeRequest; previewImage.style.transition = ''; updateViewerTransform(); edgeFillImage.hidden = true; transitionImage.hidden = true; transitionImage.style.transition = ''; transitionImage.style.transform = ''; transitionImage.className = 'transition-image';
   if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } swipeTarget = undefined; swipeDirection = undefined;
 }
 function positionSwipePreview(offset) {
   swipeOffsetX = offset;
-  if (!swipeTarget) { const edgeOffset = Math.sign(offset) * Math.min(48, Math.abs(offset) * 0.22); previewImage.style.transform = `translate(${edgeOffset}px, 0) scale(1)`; return; }
+  if (!swipeTarget) { edgeFillImage.src = previewImage.src; edgeFillImage.hidden = false; const edgeOffset = Math.sign(offset) * Math.min(48, Math.abs(offset) * 0.22); previewImage.style.transform = `translate(${edgeOffset}px, 0) scale(1)`; return; }
+  edgeFillImage.hidden = true;
   previewImage.style.transform = `translate(${offset}px, 0) scale(1)`; const stageWidth = photoStage.getBoundingClientRect().width;
   transitionImage.style.transform = `translate(${(swipeDirection === 'left' ? stageWidth : -stageWidth) + offset}px, 0)`;
 }
 async function prepareSwipeTarget(direction) {
   if (!currentPhoto || swipeDirection === direction) return; swipeDirection = direction; swipeTarget = undefined;
-  const request = ++swipeRequest; if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } transitionImage.hidden = true;
+  const request = ++swipeRequest; if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } edgeFillImage.hidden = true; transitionImage.hidden = true;
   const photo = await loadAdjacentPhoto(currentPhoto.id, direction === 'left' ? 'previous' : 'next');
   if (request !== swipeRequest || swipeDirection !== direction || !photo) return;
   swipeTarget = photo; transitionUrl = URL.createObjectURL(photo.blob); transitionImage.src = transitionUrl; transitionImage.hidden = false; positionSwipePreview(swipeOffsetX);
