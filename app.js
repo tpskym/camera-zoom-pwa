@@ -25,7 +25,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailInertiaFrame; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -284,10 +284,24 @@ previewImage.addEventListener('touchend', event => {
     if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; }
   }
 });
+function stopThumbnailInertia() { if (thumbnailInertiaFrame) { cancelAnimationFrame(thumbnailInertiaFrame); thumbnailInertiaFrame = undefined; } }
+function startThumbnailInertia(initialVelocity) {
+  stopThumbnailInertia(); let velocity = initialVelocity; let lastFrame;
+  const move = now => {
+    if (lastFrame === undefined) { lastFrame = now; thumbnailInertiaFrame = requestAnimationFrame(move); return; }
+    const elapsed = Math.min(32, now - lastFrame); lastFrame = now;
+    const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth); const previous = thumbnailStrip.scrollLeft;
+    thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, previous + velocity * elapsed));
+    velocity *= Math.pow(.994, elapsed);
+    if (Math.abs(velocity) < .015 || thumbnailStrip.scrollLeft === previous) { thumbnailInertiaFrame = undefined; return; }
+    thumbnailInertiaFrame = requestAnimationFrame(move);
+  };
+  if (Math.abs(velocity) >= .015) thumbnailInertiaFrame = requestAnimationFrame(move);
+}
 thumbnailStrip.addEventListener('touchstart', event => {
   const thumbnail = event.target.closest?.('.gallery-thumbnail'); const photo = thumbnail && thumbnailPhotos.get(thumbnail.dataset.photoId);
   if (event.touches.length !== 1 || viewerScale > 1 || !photo) return;
-  if (photo.id !== currentPhoto?.id) setCurrentPhoto(photo, 'none');
+  stopThumbnailInertia(); if (photo.id !== currentPhoto?.id) setCurrentPhoto(photo, 'none');
   thumbnailDragStartX = event.touches[0].clientX; thumbnailDragStartScrollLeft = thumbnailStrip.scrollLeft; thumbnailDragLastX = thumbnailDragStartX; thumbnailDragLastTime = performance.now(); thumbnailDragVelocity = 0;
 }, { passive: true });
 thumbnailStrip.addEventListener('touchmove', event => {
@@ -298,9 +312,9 @@ thumbnailStrip.addEventListener('touchmove', event => {
 }, { passive: false });
 thumbnailStrip.addEventListener('touchend', event => {
   if (thumbnailDragStartX === undefined) return;
-  thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0;
+  startThumbnailInertia(-thumbnailDragVelocity); thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0;
 }, { passive: true });
-thumbnailStrip.addEventListener('touchcancel', () => { thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0; }, { passive: true });
+thumbnailStrip.addEventListener('touchcancel', () => { stopThumbnailInertia(); thumbnailDragStartX = undefined; thumbnailDragStartScrollLeft = undefined; thumbnailDragLastX = undefined; thumbnailDragLastTime = undefined; thumbnailDragVelocity = 0; }, { passive: true });
 sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
   if (!navigator.canShare?.({ files: [file] })) { message.textContent = 'На этом устройстве используйте «Сохранить файл».'; return; }
