@@ -224,7 +224,7 @@ function finishSwipe() {
   }
   const target = swipeTarget; const direction = swipeDirection; const stageWidth = photoStage.getBoundingClientRect().width;
   previewImage.style.transition = 'transform .18s ease-out'; transitionImage.style.transition = 'transform .18s ease-out';
-  previewImage.style.transform = `translate(${direction === 'left' ? -stageWidth : stageWidth}px, 0) scale(1)`; transitionImage.style.transform = 'translate(0, 0)'; selectThumbnail(target.id);
+  previewImage.style.transform = `translate(${direction === 'left' ? -stageWidth : stageWidth}px, 0) scale(1)`; transitionImage.style.transform = 'translate(0, 0)';
   swipeTimer = window.setTimeout(async () => { setCurrentPhoto(target); try { await previewImage.decode(); } catch { /* Переходный слой сохранит изображение до загрузки. */ } if (currentPhoto?.id === target.id) { clearSwipePreview(); resetViewerZoom(); } }, 190);
 }
 async function autoStartCamera() {
