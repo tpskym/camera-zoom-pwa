@@ -189,7 +189,7 @@ function animateFullscreenPhotoExit(from, to) {
 function togglePhotoFullscreen() {
   const entering = !viewer.classList.contains('is-photo-fullscreen');
   if (!entering) {
-    const leaveFullscreen = () => { const from = previewImage.getBoundingClientRect(); viewer.classList.remove('is-photo-fullscreen'); isLeavingFullscreen = false; if (viewerScale === 1) animateFullscreenPhotoExit(from, previewImage.getBoundingClientRect()); };
+    const leaveFullscreen = () => { const from = previewImage.getBoundingClientRect(); requestAnimationFrame(() => { viewer.classList.remove('is-photo-fullscreen'); isLeavingFullscreen = false; if (viewerScale === 1) animateFullscreenPhotoExit(from, previewImage.getBoundingClientRect()); }); };
     if (document.fullscreenElement) { isLeavingFullscreen = true; document.exitFullscreen().then(leaveFullscreen).catch(leaveFullscreen); } else leaveFullscreen(); return;
   }
   const showFullscreenPhoto = () => { fullscreenPhotoRect = photoStage.getBoundingClientRect(); viewer.classList.add('is-photo-fullscreen'); if (viewerScale === 1 && fullscreenPhotoRect) animateFullscreenPhotoResize(fullscreenPhotoRect); fullscreenPhotoRect = undefined; };
@@ -260,7 +260,11 @@ async function openCamera() {
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
 zoom.addEventListener('input', event => setZoom(event.target.value));
-function alignZoomDialToControls() { const clip = Math.max(0, zoomDial.getBoundingClientRect().bottom - controls.getBoundingClientRect().top); zoomArcControl.style.setProperty('--zoom-dial-panel-clip', `${Math.ceil(clip)}px`); }
+function alignZoomDialToControls() {
+  const dialBottom = zoomDial.getBoundingClientRect().bottom; const panelTop = controls.getBoundingClientRect().top;
+  zoomArcControl.style.setProperty('--zoom-dial-panel-clip', `${Math.ceil(Math.max(0, dialBottom - (panelTop + 30)))}px`);
+  zoomArcControl.style.setProperty('--zoom-dial-scale-clip', `${Math.ceil(Math.max(0, dialBottom - panelTop))}px`);
+}
 function openZoomArc() { window.clearTimeout(zoomCollapseTimer); window.clearTimeout(zoomDialAlignTimer); controls.classList.add('zoom-adjusting'); zoomArcControl.classList.add('is-expanded'); zoomDialAlignTimer = window.setTimeout(alignZoomDialToControls, 320); }
 function closeZoomArc(immediate = false) { window.clearTimeout(zoomCollapseTimer); window.clearTimeout(zoomDialAlignTimer); const collapse = () => { zoomArcControl.classList.remove('is-expanded'); controls.classList.remove('zoom-adjusting'); }; if (immediate) collapse(); else zoomCollapseTimer = window.setTimeout(collapse, 450); }
 function setZoomFromPointer(event) {
