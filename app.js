@@ -24,7 +24,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomCollapseTimer;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -265,11 +265,13 @@ capture.addEventListener('click', () => {
 });
 lastPhoto.addEventListener('click', openViewer);
 previewImage.addEventListener('touchstart', event => {
-  if (event.touches.length === 2) { clearSwipePreview(); swipeStartX = undefined; swipeStartY = undefined; dragStartX = undefined; pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
+  if (event.touches.length === 2) { tapMoved = true; tapStartX = undefined; clearSwipePreview(); swipeStartX = undefined; swipeStartY = undefined; dragStartX = undefined; pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
+  if (event.touches.length === 1) { tapStartX = event.touches[0].clientX; tapStartY = event.touches[0].clientY; tapMoved = false; }
   if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; event.preventDefault(); }
   if (event.touches.length === 1 && viewerScale === 1) { clearSwipePreview(); swipeStartX = event.touches[0].clientX; swipeStartY = event.touches[0].clientY; swipeOffsetX = 0; }
 }, { passive: false });
 previewImage.addEventListener('touchmove', event => {
+  if (event.touches.length !== 1 || (tapStartX !== undefined && Math.hypot(event.touches[0].clientX - tapStartX, event.touches[0].clientY - tapStartY) > 14)) tapMoved = true;
   if (event.touches.length === 2 && pinchStartDistance) { const point = touchMidpoint(event.touches); zoomPhotoAt(pinchStartScale * touchDistance(event.touches) / pinchStartDistance, point.x, point.y); event.preventDefault(); }
   if (event.touches.length === 1 && dragStartX !== undefined) { viewerX = dragStartOffsetX + event.touches[0].clientX - dragStartX; viewerY = dragStartOffsetY + event.touches[0].clientY - dragStartY; constrainViewerPosition(); updateViewerTransform(); event.preventDefault(); }
   if (event.touches.length === 1 && swipeStartX !== undefined) { const offset = event.touches[0].clientX - swipeStartX; const offsetY = event.touches[0].clientY - swipeStartY; if (Math.abs(offset) > Math.abs(offsetY)) { const direction = offset < 0 ? 'left' : 'right'; prepareSwipeTarget(direction); positionSwipePreview(offset); event.preventDefault(); } }
@@ -278,6 +280,14 @@ previewImage.addEventListener('touchend', event => {
   if (event.touches.length < 2) { pinchStartDistance = undefined; settleViewerZoom(); }
   if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; }
   if (!event.touches.length) {
+    const touch = event.changedTouches[0]; const timestamp = Date.now();
+    const isDoubleTap = touch && !tapMoved && previousTap && timestamp - previousTap.time < 300 && Math.hypot(touch.clientX - previousTap.x, touch.clientY - previousTap.y) < 32;
+    if (isDoubleTap) {
+      event.preventDefault(); previousTap = undefined; swipeStartX = undefined; dragStartX = undefined; clearSwipePreview();
+      if (viewerScale > 1) resetViewerZoom(); else zoomPhotoAt(3, touch.clientX, touch.clientY);
+      return;
+    }
+    if (touch && !tapMoved) previousTap = { time: timestamp, x: touch.clientX, y: touch.clientY }; else previousTap = undefined;
     dragStartX = undefined;
     if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; }
   }
