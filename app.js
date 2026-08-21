@@ -24,7 +24,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomDragMoved; let zoomWasExpandedOnPointerDown; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -121,10 +121,10 @@ function buildZoomDial() {
   const fragment = document.createDocumentFragment();
   for (let index = 0; index <= 60; index += 1) {
     const value = 1 + index * 9 / 60; const angle = dialAngleForZoom(value);
-    const major = index % 5 === 0; const outer = dialPoint(154, angle); const inner = dialPoint(major ? 132 : 143, angle);
-    fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: major ? 'zoom-dial-tick major' : 'zoom-dial-tick' }));
+    const outer = dialPoint(154, angle); const inner = dialPoint(143, angle);
+    fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick' }));
   }
-  [1, 2, 3, 5, 7, 10].forEach(value => {
+  [1, 3, 5, 7, 10].forEach(value => {
     const angle = dialAngleForZoom(value); const outer = dialPoint(154, angle); const inner = dialPoint(128, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick major' }));
     const point = dialPoint(112, angle);
@@ -260,10 +260,12 @@ function setZoomFromPointer(event) {
 // slider maps a tap to a new value before it is dragged, which made a 1× tap
 // jump to a value such as 7×.  Here a tap preserves the current value and only
 // horizontal movement changes the dial.
-zoomArcControl.addEventListener('pointerdown', event => { if (zoom.disabled) return; event.preventDefault(); activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoomArcControl.setPointerCapture?.(event.pointerId); openZoomArc(); });
-zoomArcControl.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) { event.preventDefault(); setZoomFromPointer(event); } });
-zoomArcControl.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
-zoomArcControl.addEventListener('pointercancel', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
+zoomArcControl.addEventListener('pointerdown', event => { if (zoom.disabled) return; event.preventDefault(); zoomWasExpandedOnPointerDown = zoomArcControl.classList.contains('is-expanded'); zoomDragMoved = false; activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoomArcControl.setPointerCapture?.(event.pointerId); openZoomArc(); });
+zoomArcControl.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) { event.preventDefault(); if (Math.abs(event.clientX - zoomDragStartX) > 3) { zoomDragMoved = true; setZoomFromPointer(event); } } });
+zoomArcControl.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; if (zoomWasExpandedOnPointerDown && !zoomDragMoved) closeZoomArc(); } });
+zoomArcControl.addEventListener('pointercancel', event => { if (event.pointerId === activeZoomPointer) activeZoomPointer = undefined; });
+window.addEventListener('pointerdown', event => { if (zoomArcControl.classList.contains('is-expanded') && !zoomArcControl.contains(event.target)) closeZoomArc(); }, true);
+document.addEventListener('contextmenu', event => event.preventDefault());
 buildZoomDial(); updateZoomDial(1);
 capture.addEventListener('click', () => {
   if (!video.videoWidth) return;
