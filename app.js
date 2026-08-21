@@ -15,13 +15,12 @@ const viewer = document.querySelector('#viewer');
 const photoStage = document.querySelector('.photo-stage');
 const previewImage = document.querySelector('#previewImage');
 const transitionImage = document.querySelector('#transitionImage');
-const backToCamera = document.querySelector('#backToCamera');
 const thumbnailStrip = document.querySelector('#thumbnailStrip');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let thumbnailUrls = []; let transitionUrl; let transitionTimer;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -111,9 +110,28 @@ function showPhoto(photo, direction) {
   setCurrentPhoto(photo); resetViewerZoom(); previewImage.classList.remove('slide-in-left', 'slide-in-right'); void previewImage.offsetWidth; previewImage.classList.add(`slide-in-${direction === 'left' ? 'right' : 'left'}`);
   transitionTimer = window.setTimeout(() => { transitionImage.hidden = true; transitionImage.className = 'transition-image'; previewImage.classList.remove('slide-in-left', 'slide-in-right'); if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } }, 260);
 }
-async function switchViewedPhoto(direction) {
-  if (!currentPhoto) return; const photo = await loadAdjacentPhoto(currentPhoto.id, direction);
-  if (photo) showPhoto(photo, direction === 'previous' ? 'left' : 'right');
+function clearSwipePreview() {
+  previewImage.style.transition = ''; updateViewerTransform(); transitionImage.hidden = true; transitionImage.style.transition = ''; transitionImage.style.transform = ''; transitionImage.className = 'transition-image';
+  if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } swipeTarget = undefined; swipeDirection = undefined;
+}
+function positionSwipePreview(offset) {
+  swipeOffsetX = offset; previewImage.style.transform = `translate(${offset}px, 0) scale(1)`;
+  if (!swipeTarget) return; const stageWidth = photoStage.getBoundingClientRect().width;
+  transitionImage.style.transform = `translate(${(swipeDirection === 'left' ? stageWidth : -stageWidth) + offset}px, 0)`;
+}
+async function prepareSwipeTarget(direction) {
+  if (!currentPhoto || swipeDirection === direction) return; swipeDirection = direction; swipeTarget = undefined;
+  const request = ++swipeRequest; if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } transitionImage.hidden = true;
+  const photo = await loadAdjacentPhoto(currentPhoto.id, direction === 'left' ? 'previous' : 'next');
+  if (request !== swipeRequest || swipeDirection !== direction || !photo) return;
+  swipeTarget = photo; transitionUrl = URL.createObjectURL(photo.blob); transitionImage.src = transitionUrl; transitionImage.hidden = false; positionSwipePreview(swipeOffsetX);
+}
+function finishSwipe() {
+  if (!swipeTarget || Math.abs(swipeOffsetX) < 50) { clearSwipePreview(); return; }
+  const target = swipeTarget; const direction = swipeDirection; const stageWidth = photoStage.getBoundingClientRect().width;
+  previewImage.style.transition = 'transform .18s ease-out'; transitionImage.style.transition = 'transform .18s ease-out';
+  previewImage.style.transform = `translate(${direction === 'left' ? -stageWidth : stageWidth}px, 0) scale(1)`; transitionImage.style.transform = 'translate(0, 0)';
+  window.setTimeout(() => { clearSwipePreview(); setCurrentPhoto(target); resetViewerZoom(); }, 190);
 }
 async function autoStartCamera() {
   if (!navigator.permissions?.query) { panel.hidden = false; return; }
@@ -142,21 +160,22 @@ capture.addEventListener('click', () => {
   context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -z : z, z); context.drawImage(video, -width / 2, -height / 2, width, height);
   canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); } catch { showMessage('Не удалось сохранить снимок.'); } }, 'image/jpeg', 0.95);
 });
-lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { if (history.state?.faceUpViewer) history.back(); else closeViewer(); });
+lastPhoto.addEventListener('click', openViewer);
 previewImage.addEventListener('touchstart', event => {
   if (event.touches.length === 2) { pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
   if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; event.preventDefault(); }
-  if (event.touches.length === 1 && viewerScale === 1) { swipeStartX = event.touches[0].clientX; swipeStartY = event.touches[0].clientY; }
+  if (event.touches.length === 1 && viewerScale === 1) { clearSwipePreview(); swipeStartX = event.touches[0].clientX; swipeStartY = event.touches[0].clientY; swipeOffsetX = 0; }
 }, { passive: false });
 previewImage.addEventListener('touchmove', event => {
   if (event.touches.length === 2 && pinchStartDistance) { const point = touchMidpoint(event.touches); zoomPhotoAt(pinchStartScale * touchDistance(event.touches) / pinchStartDistance, point.x, point.y); event.preventDefault(); }
   if (event.touches.length === 1 && dragStartX !== undefined) { viewerX = dragStartOffsetX + event.touches[0].clientX - dragStartX; viewerY = dragStartOffsetY + event.touches[0].clientY - dragStartY; constrainViewerPosition(); updateViewerTransform(); event.preventDefault(); }
+  if (event.touches.length === 1 && swipeStartX !== undefined) { const offset = event.touches[0].clientX - swipeStartX; const offsetY = event.touches[0].clientY - swipeStartY; if (Math.abs(offset) > Math.abs(offsetY)) { const direction = offset < 0 ? 'left' : 'right'; prepareSwipeTarget(direction); positionSwipePreview(offset); event.preventDefault(); } }
 }, { passive: false });
 previewImage.addEventListener('touchend', event => {
   if (event.touches.length < 2) pinchStartDistance = undefined;
   if (!event.touches.length) {
     dragStartX = undefined;
-    if (swipeStartX !== undefined) { const changeX = event.changedTouches[0].clientX - swipeStartX; const changeY = event.changedTouches[0].clientY - swipeStartY; if (Math.abs(changeX) > 50 && Math.abs(changeX) > Math.abs(changeY)) switchViewedPhoto(changeX < 0 ? 'previous' : 'next'); swipeStartX = undefined; }
+    if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; }
   }
 });
 sharePhoto.addEventListener('click', async () => {
@@ -181,7 +200,7 @@ window.addEventListener('popstate', () => {
 async function prepareOfflineMode() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    await navigator.serviceWorker.register('./sw.js?v=1.25.0');
+    await navigator.serviceWorker.register('./sw.js?v=1.28.0');
     await navigator.serviceWorker.ready;
     await navigator.storage?.persist?.();
   } catch { /* Приложение продолжит работать онлайн, если браузер не поддерживает PWA. */ }
