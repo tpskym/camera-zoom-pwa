@@ -6,15 +6,15 @@
     <meta name="theme-color" content="#0b0d12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="manifest.webmanifest?v=1.105.0" />
-    <link rel="stylesheet" href="styles.css?v=1.105.0" />
+    <link rel="manifest" href="manifest.webmanifest?v=1.108.0" />
+    <link rel="stylesheet" href="styles.css?v=1.108.0" />
     <title>FaceUp</title>
   </head>
   <body>
     <main class="camera-app">
       <video id="video" autoplay playsinline muted aria-label="Изображение с фронтальной камеры"></video>
       <div id="flash" class="flash" aria-hidden="true"></div>
-      <section class="header"><h1>FaceUp <span class="version">v1.105.0</span></h1><button id="install" hidden>Установить</button></section>
+      <section class="header"><h1>FaceUp <span class="version">v1.108.0</span></h1><button id="install" hidden>Установить</button></section>
       <section id="startPanel" class="start-panel" hidden>
         <p>Откройте фронтальную камеру</p>
         <button id="start" class="primary">Включить камеру</button>
@@ -45,12 +45,12 @@
         <div class="photo-stage"><img id="previewImage" alt="Сделанный снимок" /><img id="transitionImage" class="transition-image" alt="" hidden /></div>
         <div id="thumbnailStrip" class="thumbnail-strip" aria-label="Снимки"></div>
         <footer class="viewer-actions">
-          <a id="downloadPhoto" class="button-link" download>Сохранить файл</a>
-          <button id="sharePhoto">Поделиться</button>
-          <button id="deletePhoto" class="danger">Удалить</button>
+          <a id="downloadPhoto" class="button-link" download aria-label="Сохранить файл" title="Сохранить файл"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4h14v-4" /></svg></a>
+          <button id="sharePhoto" aria-label="Поделиться" title="Поделиться"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2" /><circle cx="6" cy="12" r="2" /><circle cx="18" cy="19" r="2" /><path d="m8 11 8-5M8 13l8 5" /></svg></button>
+          <button id="deletePhoto" class="danger" aria-label="Удалить" title="Удалить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16m-10 4v5m4-5v5M9 7l1-3h4l1 3m-8 0 1 13h8l1-13" /></svg></button>
         </footer>
       </section>
     </main>
-    <script src="app.js?v=1.105.0"></script>
+    <script src="app.js?v=1.108.0"></script>
   </body>
 </html>

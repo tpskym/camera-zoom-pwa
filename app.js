@@ -299,13 +299,13 @@ function moveThumbnailHighlightToAdjacent() {
   if (photo && photo.id !== currentPhoto?.id) { setCurrentPhoto(photo, 'none'); resetViewerZoom(); }
 }
 function startThumbnailInertia(initialVelocity) {
-  stopThumbnailInertia(); let lastFrame; let elapsedSinceRelease = 0;
+  stopThumbnailInertia(); let velocity = initialVelocity; let lastFrame;
   const move = now => {
     if (lastFrame === undefined) { lastFrame = now; thumbnailInertiaFrame = requestAnimationFrame(move); return; }
-    const elapsed = Math.min(32, now - lastFrame); lastFrame = now; elapsedSinceRelease += elapsed;
-    const dampingElapsed = Math.max(0, elapsedSinceRelease - 70); const velocity = initialVelocity * Math.exp(-dampingElapsed * .0035);
+    const elapsed = Math.min(32, now - lastFrame); lastFrame = now;
     const maxScroll = Math.max(0, thumbnailStrip.scrollWidth - thumbnailStrip.clientWidth); const previous = thumbnailStrip.scrollLeft;
     thumbnailStrip.scrollLeft = Math.max(0, Math.min(maxScroll, previous + velocity * elapsed)); moveThumbnailHighlightToAdjacent();
+    velocity *= Math.pow(.996, elapsed);
     if (Math.abs(velocity) < .015 || thumbnailStrip.scrollLeft === previous) { thumbnailInertiaFrame = undefined; return; }
     thumbnailInertiaFrame = requestAnimationFrame(move);
   };
