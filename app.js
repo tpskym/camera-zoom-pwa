@@ -63,17 +63,26 @@ function setCurrentPhoto(photo) {
   lastPhotoImage.src = photoUrl; previewImage.src = photoUrl; downloadPhoto.href = photoUrl; downloadPhoto.download = `FaceUp-${photo.id}.jpg`; lastPhoto.hidden = false;
   renderPhotoStrip(photo.id);
 }
+function selectThumbnail(id, behavior = 'smooth') {
+  const selected = thumbnailStrip.querySelector(`.gallery-thumbnail[data-photo-id="${id}"]`);
+  if (!selected) return false;
+  thumbnailStrip.querySelector('.gallery-thumbnail.selected')?.classList.remove('selected');
+  selected.classList.add('selected');
+  selected.scrollIntoView({ block: 'nearest', inline: 'center', behavior });
+  return true;
+}
 async function renderPhotoStrip(id) {
+  if (selectThumbnail(id)) return;
   try {
     const photos = await loadAllPhotos(); if (currentPhoto?.id !== id) return;
     thumbnailUrls.forEach(url => URL.revokeObjectURL(url)); thumbnailUrls = [];
     const fragment = document.createDocumentFragment();
     photos.forEach(photo => {
-      const button = document.createElement('button'); button.className = `gallery-thumbnail${photo.id === id ? ' selected' : ''}`; button.setAttribute('aria-label', 'Открыть снимок');
+      const button = document.createElement('button'); button.className = 'gallery-thumbnail'; button.dataset.photoId = photo.id; button.setAttribute('aria-label', 'Открыть снимок');
       const image = document.createElement('img'); const url = URL.createObjectURL(photo.blob); thumbnailUrls.push(url); image.src = url; image.alt = ''; button.append(image);
       button.addEventListener('click', () => { showPhoto(photo, photo.id < currentPhoto.id ? 'left' : 'right'); }); fragment.append(button);
     });
-    thumbnailStrip.replaceChildren(fragment); thumbnailStrip.querySelector('.selected')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    thumbnailStrip.replaceChildren(fragment); selectThumbnail(id, 'auto');
   } catch { thumbnailStrip.replaceChildren(); }
 }
 async function refreshLastPhoto() {
@@ -89,14 +98,20 @@ function showMessage(text, duration = 0) {
 function updateViewerTransform() { previewImage.style.transform = `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`; }
 function resetViewerZoom() { viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
 function constrainViewerPosition() {
-  const stage = photoStage.getBoundingClientRect(); const maxX = stage.width * (viewerScale - 1) / 2; const maxY = stage.height * (viewerScale - 1) / 2;
+  const stage = photoStage.getBoundingClientRect(); const extraScale = Math.max(0, viewerScale - 1); const maxX = stage.width * extraScale / 2; const maxY = stage.height * extraScale / 2;
   viewerX = Math.max(-maxX, Math.min(maxX, viewerX)); viewerY = Math.max(-maxY, Math.min(maxY, viewerY));
 }
 function zoomPhotoAt(scale, clientX, clientY) {
-  const nextScale = Math.min(5, Math.max(1, scale)); const stage = photoStage.getBoundingClientRect();
+  const nextScale = Math.min(5, Math.max(0.86, scale)); const stage = photoStage.getBoundingClientRect();
   const focalX = clientX - stage.left - stage.width / 2; const focalY = clientY - stage.top - stage.height / 2;
   const ratio = nextScale / viewerScale; viewerX = focalX - ratio * (focalX - viewerX); viewerY = focalY - ratio * (focalY - viewerY);
-  viewerScale = nextScale; constrainViewerPosition(); updateViewerTransform();
+  viewerScale = nextScale; if (viewerScale < 1) { viewerX = 0; viewerY = 0; } else constrainViewerPosition(); updateViewerTransform();
+}
+function settleViewerZoom() {
+  if (viewerScale >= 1) return;
+  previewImage.style.transition = 'transform .18s cubic-bezier(.2,.8,.2,1)';
+  viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform();
+  window.setTimeout(() => { previewImage.style.transition = ''; }, 190);
 }
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
@@ -134,7 +149,7 @@ function finishSwipe() {
   }
   const target = swipeTarget; const direction = swipeDirection; const stageWidth = photoStage.getBoundingClientRect().width;
   previewImage.style.transition = 'transform .18s ease-out'; transitionImage.style.transition = 'transform .18s ease-out';
-  previewImage.style.transform = `translate(${direction === 'left' ? -stageWidth : stageWidth}px, 0) scale(1)`; transitionImage.style.transform = 'translate(0, 0)';
+  previewImage.style.transform = `translate(${direction === 'left' ? -stageWidth : stageWidth}px, 0) scale(1)`; transitionImage.style.transform = 'translate(0, 0)'; selectThumbnail(target.id);
   swipeTimer = window.setTimeout(async () => { setCurrentPhoto(target); try { await previewImage.decode(); } catch { /* Переходный слой сохранит изображение до загрузки. */ } if (currentPhoto?.id === target.id) { clearSwipePreview(); resetViewerZoom(); } }, 190);
 }
 async function autoStartCamera() {
@@ -166,7 +181,7 @@ capture.addEventListener('click', () => {
 });
 lastPhoto.addEventListener('click', openViewer);
 previewImage.addEventListener('touchstart', event => {
-  if (event.touches.length === 2) { pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
+  if (event.touches.length === 2) { clearSwipePreview(); swipeStartX = undefined; swipeStartY = undefined; pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
   if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; event.preventDefault(); }
   if (event.touches.length === 1 && viewerScale === 1) { clearSwipePreview(); swipeStartX = event.touches[0].clientX; swipeStartY = event.touches[0].clientY; swipeOffsetX = 0; }
 }, { passive: false });
@@ -176,7 +191,7 @@ previewImage.addEventListener('touchmove', event => {
   if (event.touches.length === 1 && swipeStartX !== undefined) { const offset = event.touches[0].clientX - swipeStartX; const offsetY = event.touches[0].clientY - swipeStartY; if (Math.abs(offset) > Math.abs(offsetY)) { const direction = offset < 0 ? 'left' : 'right'; prepareSwipeTarget(direction); positionSwipePreview(offset); event.preventDefault(); } }
 }, { passive: false });
 previewImage.addEventListener('touchend', event => {
-  if (event.touches.length < 2) pinchStartDistance = undefined;
+  if (event.touches.length < 2) { pinchStartDistance = undefined; settleViewerZoom(); }
   if (!event.touches.length) {
     dragStartX = undefined;
     if (swipeStartX !== undefined) { finishSwipe(); swipeStartX = undefined; }
@@ -190,9 +205,9 @@ sharePhoto.addEventListener('click', async () => {
 deletePhoto.addEventListener('click', async () => {
   if (!currentPhoto || !confirm('Удалить этот снимок из хранилища FaceUp?')) return;
   try {
-    const replacement = await loadAdjacentPhoto(currentPhoto.id, 'next') || await loadAdjacentPhoto(currentPhoto.id, 'previous');
-    await removePhoto(currentPhoto.id);
-    if (replacement) setCurrentPhoto(replacement); else { viewer.hidden = true; currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; }
+    const removedId = currentPhoto.id; const replacement = await loadAdjacentPhoto(removedId, 'next') || await loadAdjacentPhoto(removedId, 'previous');
+    await removePhoto(removedId); thumbnailStrip.querySelector(`.gallery-thumbnail[data-photo-id="${removedId}"]`)?.remove();
+    if (replacement) setCurrentPhoto(replacement); else { viewer.hidden = true; currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; thumbnailStrip.replaceChildren(); }
   } catch { showMessage('Не удалось удалить снимок.'); }
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });

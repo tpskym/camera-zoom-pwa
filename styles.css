@@ -1,4 +1,7 @@
 :root { color-scheme: dark; font-family: system-ui, sans-serif; background:#0b0d12; }
+.viewer .thumbnail-strip { overscroll-behavior-x:contain; scroll-behavior:smooth; }
+.viewer .gallery-thumbnail { transform:scale(1); transform-origin:center; transition:transform .22s cubic-bezier(.2,.8,.2,1), border-color .18s ease, box-shadow .22s ease; will-change:transform; }
+.viewer .gallery-thumbnail.selected { border-color:#fff; box-shadow:0 0 0 2px #81b5ff66; transform:scale(1.08); }
 * { box-sizing:border-box; } body { margin:0; overflow:hidden; background:#0b0d12; }
 .camera-app { height:100dvh; position:relative; display:grid; place-items:center; background:#000; }
 .flash { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; background:#fff; }.flash.active { animation:shutter-flash .22s ease-out; } @keyframes shutter-flash { 0% { opacity:0; } 30% { opacity:.86; } 100% { opacity:0; } }
