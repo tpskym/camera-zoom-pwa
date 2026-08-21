@@ -16,6 +16,7 @@
 .zoom-dial { bottom:-42px; clip-path:inset(0 0 34px 0); }
 .zoom-dial-current { display:block; pointer-events:none; }
 .zoom-line-track { top:9px; width:45px; height:45px; }.zoom-arc-control input[type="range"] { top:9px; width:45px; height:45px; }
+.zoom-dial-current { font-size:20px; letter-spacing:-.35px; }
 * { box-sizing:border-box; } body { margin:0; overflow:hidden; background:#0b0d12; }
 .camera-app { height:100dvh; position:relative; display:grid; place-items:center; background:#000; }
 .flash { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; background:#fff; }.flash.active { animation:shutter-flash .22s ease-out; } @keyframes shutter-flash { 0% { opacity:0; } 30% { opacity:.86; } 100% { opacity:0; } }
