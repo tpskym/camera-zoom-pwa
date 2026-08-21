@@ -1,6 +1,8 @@
 const video = document.querySelector('#video');
 const start = document.querySelector('#start');
 const switchCamera = document.querySelector('#switch');
+const zoom = document.querySelector('#zoom');
+const zoomValue = document.querySelector('#zoomValue');
 const controls = document.querySelector('#controls');
 const panel = document.querySelector('#startPanel');
 const message = document.querySelector('#message');
@@ -15,6 +17,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
+let messageTimer; let viewerScale = 1; let pinchStartDistance; let pinchStartScale;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -45,26 +48,39 @@ function setCurrentPhoto(photo) {
   currentPhoto = photo; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(photo.blob);
   lastPhotoImage.src = photoUrl; previewImage.src = photoUrl; downloadPhoto.href = photoUrl; downloadPhoto.download = `FaceUp-${photo.id}.jpg`; lastPhoto.hidden = false;
 }
-function openViewer() { if (currentPhoto) viewer.hidden = false; }
+function showMessage(text, duration = 0) {
+  window.clearTimeout(messageTimer); message.textContent = text;
+  if (duration) messageTimer = window.setTimeout(() => { if (message.textContent === text) message.textContent = ''; }, duration);
+}
+function setViewerScale(scale) { viewerScale = Math.min(5, Math.max(1, scale)); previewImage.style.transform = `scale(${viewerScale})`; }
+function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
+function openViewer() { if (currentPhoto) { setViewerScale(1); viewer.hidden = false; } }
 
-function updateCameraTransform() { video.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'none'; }
+function setZoom(value) {
+  const z = Number(value); video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
+  zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`;
+}
 async function openCamera() {
   message.textContent = '';
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('Ваш браузер не поддерживает доступ к камере.');
   stream?.getTracks().forEach(track => track.stop());
   stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
-  video.srcObject = stream; await video.play(); panel.hidden = true; controls.hidden = false; updateCameraTransform();
+  video.srcObject = stream; await video.play(); panel.hidden = true; controls.hidden = false; setZoom(1);
 }
 start.addEventListener('click', async () => { try { await openCamera(); } catch (error) { message.textContent = error.message || 'Не удалось открыть камеру. Проверьте разрешение в браузере.'; } });
 switchCamera.addEventListener('click', async () => { facingMode = facingMode === 'user' ? 'environment' : 'user'; try { await openCamera(); } catch (error) { message.textContent = 'Не удалось переключить камеру.'; } });
+zoom.addEventListener('input', event => setZoom(event.target.value));
 capture.addEventListener('click', () => {
   if (!video.videoWidth) return;
-  const canvas = document.createElement('canvas'); const width = video.videoWidth; const height = video.videoHeight;
+  const canvas = document.createElement('canvas'); const width = video.videoWidth; const height = video.videoHeight; const z = Number(zoom.value);
   canvas.width = width; canvas.height = height; const context = canvas.getContext('2d');
-  context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -1 : 1, 1); context.drawImage(video, -width / 2, -height / 2, width, height);
-  canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); message.textContent = 'Снимок сохранён в FaceUp.'; } catch { message.textContent = 'Не удалось сохранить снимок.'; } }, 'image/jpeg', 0.95);
+  context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -z : z, z); context.drawImage(video, -width / 2, -height / 2, width, height);
+  canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); showMessage('Снимок сохранён в FaceUp.', 2500); } catch { showMessage('Не удалось сохранить снимок.'); } }, 'image/jpeg', 0.95);
 });
 lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { viewer.hidden = true; });
+previewImage.addEventListener('touchstart', event => { if (event.touches.length === 2) { pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); } }, { passive: false });
+previewImage.addEventListener('touchmove', event => { if (event.touches.length === 2 && pinchStartDistance) { setViewerScale(pinchStartScale * touchDistance(event.touches) / pinchStartDistance); event.preventDefault(); } }, { passive: false });
+previewImage.addEventListener('touchend', event => { if (event.touches.length < 2) pinchStartDistance = undefined; });
 sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
   if (!navigator.canShare?.({ files: [file] })) { message.textContent = 'На этом устройстве используйте «Сохранить файл».'; return; }
@@ -75,11 +91,10 @@ deletePhoto.addEventListener('click', async () => {
   try {
     await removePhoto(currentPhoto.id); const nextPhoto = await loadLatestPhoto(); viewer.hidden = true;
     if (nextPhoto) setCurrentPhoto(nextPhoto); else { currentPhoto = undefined; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = undefined; lastPhoto.hidden = true; }
-    message.textContent = 'Снимок удалён из FaceUp.';
-    window.setTimeout(() => { if (message.textContent === 'Снимок удалён из FaceUp.') message.textContent = ''; }, 2500);
-  } catch { message.textContent = 'Не удалось удалить снимок.'; }
+    showMessage('Снимок удалён из FaceUp.', 2500);
+  } catch { showMessage('Не удалось удалить снимок.'); }
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.11.0');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.12.0');
 loadLatestPhoto().then(photo => { if (photo) setCurrentPhoto(photo); }).catch(() => { /* Камера продолжит работать, даже если хранилище недоступно. */ });
