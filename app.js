@@ -4,9 +4,10 @@ const start = document.querySelector('#start');
 const switchCamera = document.querySelector('#switch');
 const zoom = document.querySelector('#zoom');
 const zoomValue = document.querySelector('#zoomValue');
-const zoomArcProgress = document.querySelector('#zoomArcProgress');
 const zoomArcControl = document.querySelector('#zoomArcControl');
 const zoomLineProgress = document.querySelector('#zoomLineProgress');
+const zoomDialWheel = document.querySelector('#zoomDialWheel');
+const zoomDialCurrent = document.querySelector('#zoomDialCurrent');
 const controls = document.querySelector('#controls');
 const panel = document.querySelector('#startPanel');
 const message = document.querySelector('#message');
@@ -28,6 +29,7 @@ let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pin
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
 const ZOOM_SNAP_POINTS = [2, 3, 5, 7];
+const DIAL_CENTER_X = 180; const DIAL_CENTER_Y = 190; const DIAL_DEGREES_PER_OCTAVE = 20;
 function photoDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -102,6 +104,35 @@ function showMessage(text, duration = 0) {
 function snapZoom(value, lockedSnap) {
   if (lockedSnap && Math.abs(value - lockedSnap) <= 0.24) return lockedSnap;
   return ZOOM_SNAP_POINTS.find(point => Math.abs(value - point) <= 0.12);
+}
+function dialPoint(radius, angle) {
+  const radians = angle * Math.PI / 180;
+  return { x: DIAL_CENTER_X + radius * Math.cos(radians), y: DIAL_CENTER_Y + radius * Math.sin(radians) };
+}
+function createDialNode(name, attributes, text) {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', name);
+  Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+  if (text) node.textContent = text;
+  return node;
+}
+function buildZoomDial() {
+  const fragment = document.createDocumentFragment();
+  for (let index = 0; index <= 54; index += 1) {
+    const value = 0.5 + index * 0.2; const angle = 270 + DIAL_DEGREES_PER_OCTAVE * Math.log2(value);
+    const major = index % 5 === 0; const outer = dialPoint(154, angle); const inner = dialPoint(major ? 132 : 143, angle);
+    fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: major ? 'zoom-dial-tick major' : 'zoom-dial-tick' }));
+  }
+  [0.6, 1, 2, 3, 5, 7, 10].forEach(value => {
+    const angle = 270 + DIAL_DEGREES_PER_OCTAVE * Math.log2(value); const outer = dialPoint(154, angle); const inner = dialPoint(128, angle);
+    fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick major' }));
+    const point = dialPoint(112, angle);
+    fragment.append(createDialNode('text', { x: point.x, y: point.y, class: 'zoom-dial-label' }, `${value}×`));
+  });
+  zoomDialWheel.replaceChildren(fragment);
+}
+function updateZoomDial(value) {
+  zoomDialWheel.setAttribute('transform', `rotate(${-DIAL_DEGREES_PER_OCTAVE * Math.log2(value)} ${DIAL_CENTER_X} ${DIAL_CENTER_Y})`);
+  zoomDialCurrent.textContent = `${Number.isInteger(value) ? value : value.toFixed(1)}×`;
 }
 function updateCameraPreviewZoom(logicalZoom) {
   cameraRenderZoom = logicalZoom / Math.max(1, hardwareZoomLevel);
@@ -197,7 +228,7 @@ function setZoom(value) {
   const requestedZoom = Number(value); const nextSnap = snapZoom(requestedZoom, cameraZoomSnap);
   if (nextSnap && nextSnap !== cameraZoomSnap) navigator.vibrate?.(8);
   cameraZoomSnap = nextSnap; const z = nextSnap || requestedZoom; requestedHardwareZoom = getHardwareZoomTarget(z); updateCameraPreviewZoom(z); synchronizeHardwareZoom();
-  const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`; zoomArcProgress.style.strokeDasharray = `${zoomPercent} 100`; zoomLineProgress.style.width = `${zoomPercent}%`;
+  const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`; zoomLineProgress.style.width = `${zoomPercent}%`; updateZoomDial(z);
 }
 async function openCamera() {
   message.textContent = '';
@@ -223,6 +254,7 @@ zoom.addEventListener('pointerdown', event => { activeZoomPointer = event.pointe
 zoom.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) setZoomFromPointer(event); });
 zoom.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
 zoom.addEventListener('pointercancel', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; closeZoomArc(); } });
+buildZoomDial(); updateZoomDial(1);
 capture.addEventListener('click', () => {
   if (!video.videoWidth) return;
   flashScreen(); navigator.vibrate?.(10);
