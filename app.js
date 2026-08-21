@@ -18,7 +18,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -61,11 +61,15 @@ function showMessage(text, duration = 0) {
 }
 function updateViewerTransform() { previewImage.style.transform = `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`; }
 function resetViewerZoom() { viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
+function constrainViewerPosition() {
+  const stage = photoStage.getBoundingClientRect(); const maxX = stage.width * (viewerScale - 1) / 2; const maxY = stage.height * (viewerScale - 1) / 2;
+  viewerX = Math.max(-maxX, Math.min(maxX, viewerX)); viewerY = Math.max(-maxY, Math.min(maxY, viewerY));
+}
 function zoomPhotoAt(scale, clientX, clientY) {
   const nextScale = Math.min(5, Math.max(1, scale)); const stage = photoStage.getBoundingClientRect();
   const focalX = clientX - stage.left - stage.width / 2; const focalY = clientY - stage.top - stage.height / 2;
   const ratio = nextScale / viewerScale; viewerX = focalX - ratio * (focalX - viewerX); viewerY = focalY - ratio * (focalY - viewerY);
-  viewerScale = nextScale; updateViewerTransform();
+  viewerScale = nextScale; constrainViewerPosition(); updateViewerTransform();
 }
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
@@ -93,9 +97,15 @@ capture.addEventListener('click', () => {
   canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); showMessage('Снимок сохранён в FaceUp.', 2500); } catch { showMessage('Не удалось сохранить снимок.'); } }, 'image/jpeg', 0.95);
 });
 lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { viewer.hidden = true; });
-previewImage.addEventListener('touchstart', event => { if (event.touches.length === 2) { pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); } }, { passive: false });
-previewImage.addEventListener('touchmove', event => { if (event.touches.length === 2 && pinchStartDistance) { const point = touchMidpoint(event.touches); zoomPhotoAt(pinchStartScale * touchDistance(event.touches) / pinchStartDistance, point.x, point.y); event.preventDefault(); } }, { passive: false });
-previewImage.addEventListener('touchend', event => { if (event.touches.length < 2) pinchStartDistance = undefined; });
+previewImage.addEventListener('touchstart', event => {
+  if (event.touches.length === 2) { pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
+  if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; event.preventDefault(); }
+}, { passive: false });
+previewImage.addEventListener('touchmove', event => {
+  if (event.touches.length === 2 && pinchStartDistance) { const point = touchMidpoint(event.touches); zoomPhotoAt(pinchStartScale * touchDistance(event.touches) / pinchStartDistance, point.x, point.y); event.preventDefault(); }
+  if (event.touches.length === 1 && dragStartX !== undefined) { viewerX = dragStartOffsetX + event.touches[0].clientX - dragStartX; viewerY = dragStartOffsetY + event.touches[0].clientY - dragStartY; constrainViewerPosition(); updateViewerTransform(); event.preventDefault(); }
+}, { passive: false });
+previewImage.addEventListener('touchend', event => { if (event.touches.length < 2) pinchStartDistance = undefined; if (!event.touches.length) dragStartX = undefined; });
 sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
   if (!navigator.canShare?.({ files: [file] })) { message.textContent = 'На этом устройстве используйте «Сохранить файл».'; return; }
@@ -111,7 +121,7 @@ deletePhoto.addEventListener('click', async () => {
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.14.0');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.15.0');
 refreshLastPhoto();
 window.addEventListener('pageshow', refreshLastPhoto);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLastPhoto(); });
