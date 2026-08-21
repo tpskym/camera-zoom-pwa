@@ -1,10 +1,17 @@
-const CACHE = 'faceup-v1.24.0';
-const APP_FILES = ['./', './index.html', './styles.css?v=1.24.0', './app.js?v=1.24.0', './manifest.webmanifest?v=1.24.0', './icon.svg', './icon-maskable.svg'];
+const CACHE = 'faceup-v1.25.0';
+const APP_ROOT = new URL('./', self.registration.scope).href;
+const INDEX_URL = new URL('./index.html', self.registration.scope).href;
+const APP_FILES = [APP_ROOT, INDEX_URL, new URL('./styles.css?v=1.25.0', self.registration.scope).href, new URL('./app.js?v=1.25.0', self.registration.scope).href, new URL('./manifest.webmanifest?v=1.25.0', self.registration.scope).href, new URL('./icon.svg', self.registration.scope).href, new URL('./icon-maskable.svg', self.registration.scope).href];
 
-// Сначала сохраняем оболочку приложения — тогда оно откроется без интернета.
-self.addEventListener('install', event => event.waitUntil(
-  caches.open(CACHE).then(cache => cache.addAll(APP_FILES)).then(() => self.skipWaiting())
-));
+async function saveAppShell() {
+  const cache = await caches.open(CACHE);
+  await Promise.all(APP_FILES.map(async url => {
+    const response = await fetch(new Request(url, { cache: 'reload' }));
+    if (!response.ok) throw new Error(`Не удалось сохранить ${url}`);
+    await cache.put(url, response);
+  }));
+}
+self.addEventListener('install', event => event.waitUntil(saveAppShell().then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(
   caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
     .then(() => self.clients.claim())
@@ -15,13 +22,14 @@ self.addEventListener('fetch', event => {
     try {
       const response = await fetch(event.request, { cache: 'no-store' });
       if (response.ok && new URL(event.request.url).origin === self.location.origin) {
-        caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
+        const cache = await caches.open(CACHE); await cache.put(event.request, response.clone());
       }
       return response;
     } catch {
       const cached = await caches.match(event.request);
       if (cached) return cached;
-      return new Response('FaceUp ещё не был сохранён для работы офлайн.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      if (event.request.mode === 'navigate') return (await caches.match(APP_ROOT)) || (await caches.match(INDEX_URL)) || new Response('FaceUp ещё не готов для работы без интернета.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      return new Response('', { status: 504 });
     }
   })());
 });

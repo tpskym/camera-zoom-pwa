@@ -178,7 +178,15 @@ window.addEventListener('popstate', () => {
   if (viewer.hidden) return;
   if (viewerScale > 1) { resetViewerZoom(); history.pushState({ faceUpViewer: true }, '', location.href); } else closeViewer();
 });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.24.0');
+async function prepareOfflineMode() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    await navigator.serviceWorker.register('./sw.js?v=1.25.0');
+    await navigator.serviceWorker.ready;
+    await navigator.storage?.persist?.();
+  } catch { /* Приложение продолжит работать онлайн, если браузер не поддерживает PWA. */ }
+}
+prepareOfflineMode();
 refreshLastPhoto();
 autoStartCamera();
 window.addEventListener('pageshow', refreshLastPhoto);
