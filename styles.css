@@ -8,6 +8,7 @@
 .zoom-line-track #zoomLineProgress { display:none; }.zoom-line-track #zoomLineValue { position:absolute; top:50%; left:50%; width:auto; height:auto; transform:translate(-50%,-50%); color:#e7cf58; font-size:27px; font-weight:500; letter-spacing:-.5px; line-height:1; }
 .zoom-dial-surface { stroke:#ffffff16; }.zoom-dial-rim { stroke:#ffffff10; }.zoom-dial-tick { stroke-opacity:.42; }.zoom-dial-tick.major { stroke-opacity:.78; }.zoom-dial-indicator-dot { fill:#e7cf58; filter:drop-shadow(0 0 5px #e7cf58cc); pointer-events:visiblePainted; }.zoom-dial-current { display:none; }.camera-app, .camera-app button, .zoom-arc-control { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
 .zoom-dial { aspect-ratio:360 / 160; }
+.zoom-line-track #zoomLineValue { background:transparent; box-shadow:none; border-radius:0; }
 * { box-sizing:border-box; } body { margin:0; overflow:hidden; background:#0b0d12; }
 .camera-app { height:100dvh; position:relative; display:grid; place-items:center; background:#000; }
 .flash { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0; background:#fff; }.flash.active { animation:shutter-flash .22s ease-out; } @keyframes shutter-flash { 0% { opacity:0; } 30% { opacity:.86; } 100% { opacity:0; } }

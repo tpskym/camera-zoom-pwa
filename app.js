@@ -237,6 +237,7 @@ function setZoom(value) {
   const zoomPercent = (z - 1) / 9 * 100; zoom.value = z; zoomLineProgress.style.width = `${zoomPercent}%`; zoomLineValue.textContent = formatCameraZoom(z); updateZoomDial(z);
 }
 async function openCamera() {
+  closeZoomArc(true);
   message.textContent = '';
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('Ваш браузер не поддерживает доступ к камере.');
   stream?.getTracks().forEach(track => track.stop());
