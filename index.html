@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#0b0d12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="manifest.webmanifest?v=1.123.0" />
-    <link rel="stylesheet" href="styles.css?v=1.123.0" />
-    <style>.viewer.is-photo-fullscreen { grid-template-rows:1fr; align-content:stretch; padding-top:0; }.zoom-dial-surface { fill:none; }.edge-fill-image { position:absolute; inset:0; z-index:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }.photo-stage #previewImage { z-index:1; }.photo-stage .transition-image { z-index:2; }</style>
+    <link rel="manifest" href="manifest.webmanifest?v=1.124.0" />
+    <link rel="stylesheet" href="styles.css?v=1.124.0" />
+    <style>.viewer.is-photo-fullscreen { grid-template-rows:1fr; align-content:stretch; padding-top:0; }.zoom-dial-surface { fill:url(#zoomDialSurface); }.edge-fill-image { position:absolute; inset:0; z-index:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }.photo-stage #previewImage { z-index:1; }.photo-stage .transition-image { z-index:2; }.fullscreen-transition-image { position:fixed; z-index:4; object-fit:cover; pointer-events:none; transform-origin:top left; }</style>
     <title>FaceUp</title>
   </head>
   <body>
@@ -29,13 +29,13 @@
           <button id="switch" class="switch-camera" aria-label="Сменить камеру" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h11l-2.5-2.5 1.4-1.4L19 7l-5.1 4.9-1.4-1.4L15 8H4V6zm16 12H9l2.5 2.5-1.4 1.4L5 17l5.1-4.9 1.4 1.4L9 16h11v2z"/></svg></button>
         </div>
       </section>
-      <span id="bottomVersion" class="bottom-version" aria-label="Версия FaceUp">v1.123.0</span>
+      <span id="bottomVersion" class="bottom-version" aria-label="Версия FaceUp">v1.124.0</span>
       <div id="zoomArcControl" class="zoom-arc-control">
         <div class="zoom-line-track" aria-hidden="true"><span id="zoomLineProgress"></span><span id="zoomLineValue" class="zoom-line-value">1x</span></div>
         <svg class="zoom-dial" viewBox="0 0 360 260" aria-hidden="true">
           <defs><linearGradient id="zoomDialSurface" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#292a30" stop-opacity=".20" /><stop offset=".42" stop-color="#15161a" stop-opacity=".26" /><stop offset="1" stop-color="#08090c" stop-opacity=".32" /></linearGradient></defs>
-          <path class="zoom-dial-surface" d="M24.1 240A180 180 0 0 1 335.9 240L360 260H0Z" />
-          <path class="zoom-dial-rim" d="M24.1 240A180 180 0 0 1 335.9 240" />
+          <path class="zoom-dial-surface" d="M24.1 240A180 180 0 0 1 335.9 240V330H24.1Z" />
+          <path class="zoom-dial-rim" d="M24.1 240A180 180 0 0 1 335.9 240M24.1 240V330M335.9 240V330" />
           <g id="zoomDialWheel"></g>
           <line class="zoom-dial-indicator" x1="180" y1="156" x2="180" y2="178" />
           <circle class="zoom-dial-indicator-dot" cx="180" cy="150" r="7" />
@@ -53,7 +53,8 @@
           <button id="deletePhoto" class="danger" aria-label="Удалить" title="Удалить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16m-10 4v5m4-5v5M9 7l1-3h4l1 3m-8 0 1 13h8l1-13" /></svg></button>
         </footer>
       </section>
+      <img id="fullscreenTransitionImage" class="fullscreen-transition-image" alt="" hidden />
     </main>
-    <script src="app.js?v=1.123.0"></script>
+    <script src="app.js?v=1.124.0"></script>
   </body>
 </html>
