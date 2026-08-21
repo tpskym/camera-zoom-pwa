@@ -117,12 +117,12 @@ function createDialNode(name, attributes, text) {
 }
 function buildZoomDial() {
   const fragment = document.createDocumentFragment();
-  for (let index = 0; index <= 54; index += 1) {
-    const value = 0.5 + index * 0.2; const angle = 270 + DIAL_DEGREES_PER_OCTAVE * Math.log2(value);
+  for (let index = 0; index <= 60; index += 1) {
+    const value = 1 + index * 0.2; const angle = 270 + DIAL_DEGREES_PER_OCTAVE * Math.log2(value);
     const major = index % 5 === 0; const outer = dialPoint(154, angle); const inner = dialPoint(major ? 132 : 143, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: major ? 'zoom-dial-tick major' : 'zoom-dial-tick' }));
   }
-  [0.6, 1, 2, 3, 5, 7, 10].forEach(value => {
+  [1, 2, 3, 5, 7, 10].forEach(value => {
     const angle = 270 + DIAL_DEGREES_PER_OCTAVE * Math.log2(value); const outer = dialPoint(154, angle); const inner = dialPoint(128, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick major' }));
     const point = dialPoint(112, angle);
