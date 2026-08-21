@@ -24,7 +24,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -164,6 +164,10 @@ async function synchronizeHardwareZoom() {
 }
 function updateViewerTransform() { previewImage.style.transform = `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`; }
 function resetViewerZoom() { viewerScale = 1; viewerX = 0; viewerY = 0; updateViewerTransform(); }
+function animateViewerZoom(change) {
+  window.clearTimeout(viewerZoomAnimationTimer); previewImage.style.transition = 'transform .24s cubic-bezier(.2,.8,.2,1)';
+  change(); viewerZoomAnimationTimer = window.setTimeout(() => { previewImage.style.transition = ''; }, 250);
+}
 function constrainViewerPosition() {
   const stage = photoStage.getBoundingClientRect(); const extraScale = Math.max(0, viewerScale - 1); const maxX = stage.width * extraScale / 2; const maxY = stage.height * extraScale / 2;
   viewerX = Math.max(-maxX, Math.min(maxX, viewerX)); viewerY = Math.max(-maxY, Math.min(maxY, viewerY));
@@ -266,6 +270,7 @@ capture.addEventListener('click', () => {
 });
 lastPhoto.addEventListener('click', openViewer);
 previewImage.addEventListener('touchstart', event => {
+  window.clearTimeout(viewerZoomAnimationTimer); previewImage.style.transition = '';
   if (event.touches.length === 2) { tapMoved = true; tapStartX = undefined; clearSwipePreview(); swipeStartX = undefined; swipeStartY = undefined; dragStartX = undefined; pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
   if (event.touches.length === 1) { tapStartX = event.touches[0].clientX; tapStartY = event.touches[0].clientY; tapMoved = false; }
   if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; event.preventDefault(); }
@@ -285,7 +290,7 @@ previewImage.addEventListener('touchend', event => {
     const isDoubleTap = touch && !tapMoved && previousTap && timestamp - previousTap.time < 300 && Math.hypot(touch.clientX - previousTap.x, touch.clientY - previousTap.y) < 32;
     if (isDoubleTap) {
       event.preventDefault(); previousTap = undefined; swipeStartX = undefined; dragStartX = undefined; clearSwipePreview();
-      if (viewerScale > 1) resetViewerZoom(); else zoomPhotoAt(3, touch.clientX, touch.clientY);
+      animateViewerZoom(() => { if (viewerScale > 1) resetViewerZoom(); else zoomPhotoAt(3, touch.clientX, touch.clientY); });
       return;
     }
     if (touch && !tapMoved) previousTap = { time: timestamp, x: touch.clientX, y: touch.clientY }; else previousTap = undefined;
