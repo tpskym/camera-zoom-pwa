@@ -1,5 +1,5 @@
-const CACHE = 'faceup-v1.9.0';
-const APP_FILES = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './icon.svg', './icon-maskable.svg'];
+const CACHE = 'faceup-v1.10.0';
+const APP_FILES = ['./', './index.html', './styles.css?v=1.10.0', './app.js?v=1.10.0', './manifest.webmanifest?v=1.10.0', './icon.svg', './icon-maskable.svg'];
 
 // Сначала сохраняем оболочку приложения — тогда оно откроется без интернета.
 self.addEventListener('install', event => event.waitUntil(
@@ -13,7 +13,7 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith((async () => {
     try {
-      const response = await fetch(event.request);
+      const response = await fetch(event.request, { cache: 'no-store' });
       if (response.ok && new URL(event.request.url).origin === self.location.origin) {
         caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
       }

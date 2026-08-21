@@ -81,5 +81,5 @@ deletePhoto.addEventListener('click', async () => {
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.10.0');
 loadLatestPhoto().then(photo => { if (photo) setCurrentPhoto(photo); }).catch(() => { /* Камера продолжит работать, даже если хранилище недоступно. */ });
