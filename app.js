@@ -124,7 +124,7 @@ function buildZoomDial() {
     const outer = dialPoint(174, angle); const inner = dialPoint(164, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick' }));
   }
-  [1, 3, 5, 7, 10].forEach(value => {
+  [1, 2, 3, 5, 7, 10].forEach(value => {
     const angle = dialAngleForZoom(value); const outer = dialPoint(174, angle); const inner = dialPoint(146, angle);
     fragment.append(createDialNode('line', { x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y, class: 'zoom-dial-tick major' }));
     const point = dialPoint(128, angle);
@@ -135,11 +135,6 @@ function buildZoomDial() {
 function updateZoomDial(value) {
   const wheelRotation = 270 - dialAngleForZoom(value);
   zoomDialWheel.setAttribute('transform', `rotate(${wheelRotation} ${DIAL_CENTER_X} ${DIAL_CENTER_Y})`);
-  zoomDialWheel.querySelectorAll('.zoom-dial-label').forEach(label => {
-    const isSelected = Math.abs(Number(label.dataset.zoom) - value) < 0.001;
-    if (isSelected) label.setAttribute('transform', `rotate(${-wheelRotation} ${label.getAttribute('x')} ${label.getAttribute('y')})`);
-    else label.removeAttribute('transform');
-  });
   zoomDialCurrent.textContent = formatCameraZoom(value);
 }
 function updateCameraPreviewZoom(logicalZoom) {
