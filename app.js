@@ -130,8 +130,9 @@ function clearSwipePreview() {
   if (transitionUrl) { URL.revokeObjectURL(transitionUrl); transitionUrl = undefined; } swipeTarget = undefined; swipeDirection = undefined;
 }
 function positionSwipePreview(offset) {
-  swipeOffsetX = offset; previewImage.style.transform = `translate(${offset}px, 0) scale(1)`;
-  if (!swipeTarget) return; const stageWidth = photoStage.getBoundingClientRect().width;
+  swipeOffsetX = offset;
+  if (!swipeTarget) { previewImage.style.transform = 'translate(0, 0) scale(1)'; return; }
+  previewImage.style.transform = `translate(${offset}px, 0) scale(1)`; const stageWidth = photoStage.getBoundingClientRect().width;
   transitionImage.style.transform = `translate(${(swipeDirection === 'left' ? stageWidth : -stageWidth) + offset}px, 0)`;
 }
 async function prepareSwipeTarget(direction) {
