@@ -21,7 +21,6 @@ const photoStage = document.querySelector('.photo-stage');
 const previewImage = document.querySelector('#previewImage');
 const edgeFillImage = document.querySelector('#edgeFillImage');
 const transitionImage = document.querySelector('#transitionImage');
-const fullscreenTransitionImage = document.querySelector('#fullscreenTransitionImage');
 const thumbnailStrip = document.querySelector('#thumbnailStrip');
 const header = document.querySelector('.header');
 const bottomVersion = document.querySelector('#bottomVersion');
@@ -29,7 +28,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let fullscreenExitAnimationTimer; let isLeavingFullscreen; let viewerSingleTapTimer; let fullscreenPhotoRect; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let zoomDialAlignTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailPhotos = new Map(); let thumbnailDragStartX; let thumbnailDragStartScrollLeft; let thumbnailDragLastX; let thumbnailDragLastTime; let thumbnailDragVelocity = 0; let thumbnailTapPhoto; let thumbnailDidMove; let thumbnailInertiaFrame; let thumbnailEdgeReleaseTimer; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let isLeavingFullscreen; let viewerSingleTapTimer; let cameraZoomSnap; let cameraZoomHapticZone = 1; let cameraRenderZoom = 1; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let zoomDialAlignTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -171,31 +170,18 @@ function settleViewerZoom() {
 }
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
-function animateFullscreenPhotoResize(from) {
-  requestAnimationFrame(() => {
-    const to = photoStage.getBoundingClientRect(); const scaleX = from.width / to.width; const scaleY = from.height / to.height;
-    const offsetX = from.left - to.left; const offsetY = from.top - to.top;
-    if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) return;
-    window.clearTimeout(viewerZoomAnimationTimer); previewImage.style.transition = 'none'; previewImage.style.transformOrigin = 'top left'; previewImage.style.transform = `matrix(${scaleX}, 0, 0, ${scaleY}, ${offsetX}, ${offsetY})`;
-    requestAnimationFrame(() => { previewImage.style.transition = 'transform .48s cubic-bezier(.22,.61,.36,1)'; previewImage.style.transform = 'matrix(1, 0, 0, 1, 0, 0)'; viewerZoomAnimationTimer = window.setTimeout(() => { previewImage.style.transition = ''; previewImage.style.transformOrigin = ''; updateViewerTransform(); }, 510); });
-  });
-}
-function animateFullscreenPhotoExit(from, to) {
-  if (![from, to].every(rect => Number.isFinite(rect.width) && Number.isFinite(rect.height))) return;
-  window.clearTimeout(fullscreenExitAnimationTimer); fullscreenTransitionImage.src = previewImage.src; fullscreenTransitionImage.style.left = `${from.left}px`; fullscreenTransitionImage.style.top = `${from.top}px`; fullscreenTransitionImage.style.width = `${from.width}px`; fullscreenTransitionImage.style.height = `${from.height}px`; fullscreenTransitionImage.style.transition = 'none'; fullscreenTransitionImage.style.transform = 'none'; fullscreenTransitionImage.hidden = false;
-  requestAnimationFrame(() => { fullscreenTransitionImage.style.transition = 'left .48s cubic-bezier(.22,.61,.36,1), top .48s cubic-bezier(.22,.61,.36,1), width .48s cubic-bezier(.22,.61,.36,1), height .48s cubic-bezier(.22,.61,.36,1)'; fullscreenTransitionImage.style.left = `${to.left}px`; fullscreenTransitionImage.style.top = `${to.top}px`; fullscreenTransitionImage.style.width = `${to.width}px`; fullscreenTransitionImage.style.height = `${to.height}px`; fullscreenExitAnimationTimer = window.setTimeout(() => { fullscreenTransitionImage.hidden = true; fullscreenTransitionImage.style.transition = ''; fullscreenTransitionImage.style.transform = ''; fullscreenTransitionImage.style.left = ''; fullscreenTransitionImage.style.top = ''; fullscreenTransitionImage.style.width = ''; fullscreenTransitionImage.style.height = ''; }, 510); });
-}
+function transitionViewerLayout(change) { if (document.startViewTransition) document.startViewTransition(change); else change(); }
 function togglePhotoFullscreen() {
   const entering = !viewer.classList.contains('is-photo-fullscreen');
   if (!entering) {
-    const leaveFullscreen = () => { const from = previewImage.getBoundingClientRect(); requestAnimationFrame(() => { viewer.classList.remove('is-photo-fullscreen'); isLeavingFullscreen = false; if (viewerScale === 1) animateFullscreenPhotoExit(from, previewImage.getBoundingClientRect()); }); };
+    const leaveFullscreen = () => { transitionViewerLayout(() => viewer.classList.remove('is-photo-fullscreen')); isLeavingFullscreen = false; };
     if (document.fullscreenElement) { isLeavingFullscreen = true; document.exitFullscreen().then(leaveFullscreen).catch(leaveFullscreen); } else leaveFullscreen(); return;
   }
-  const showFullscreenPhoto = () => { fullscreenPhotoRect = photoStage.getBoundingClientRect(); viewer.classList.add('is-photo-fullscreen'); if (viewerScale === 1 && fullscreenPhotoRect) animateFullscreenPhotoResize(fullscreenPhotoRect); fullscreenPhotoRect = undefined; };
+  const showFullscreenPhoto = () => transitionViewerLayout(() => viewer.classList.add('is-photo-fullscreen'));
   if (document.fullscreenEnabled && !document.fullscreenElement) viewer.requestFullscreen({ navigationUI: 'hide' }).then(showFullscreenPhoto).catch(showFullscreenPhoto);
   else showFullscreenPhoto();
 }
-function closeViewer() { window.clearTimeout(viewerSingleTapTimer); window.clearTimeout(fullscreenExitAnimationTimer); isLeavingFullscreen = false; fullscreenTransitionImage.hidden = true; viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; video.style.visibility = ''; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
+function closeViewer() { window.clearTimeout(viewerSingleTapTimer); isLeavingFullscreen = false; viewer.classList.remove('is-photo-fullscreen'); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); viewer.hidden = true; video.style.visibility = ''; zoomArcControl.hidden = false; resetViewerZoom(); refreshLastPhoto(); }
 function openViewer() { if (currentPhoto) { window.clearTimeout(viewerSingleTapTimer); viewer.classList.remove('is-photo-fullscreen'); resetViewerZoom(); zoomArcControl.hidden = true; video.style.visibility = 'hidden'; viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
 function showPhoto(photo, direction) {
