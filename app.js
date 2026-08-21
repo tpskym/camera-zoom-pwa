@@ -15,13 +15,12 @@ const viewer = document.querySelector('#viewer');
 const photoStage = document.querySelector('.photo-stage');
 const previewImage = document.querySelector('#previewImage');
 const backToCamera = document.querySelector('#backToCamera');
-const previousPhoto = document.querySelector('#previousPhoto');
-const nextPhoto = document.querySelector('#nextPhoto');
+const thumbnailStrip = document.querySelector('#thumbnailStrip');
 const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let thumbnailUrls = [];
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -43,6 +42,11 @@ async function loadLatestPhoto() {
   const photo = await new Promise((resolve, reject) => { const request = db.transaction(STORE_NAME).objectStore(STORE_NAME).openCursor(null, 'prev'); request.onsuccess = () => resolve(request.result?.value); request.onerror = () => reject(request.error); });
   db.close(); return photo;
 }
+async function loadAllPhotos() {
+  const db = await photoDatabase(); const photos = [];
+  await new Promise((resolve, reject) => { const request = db.transaction(STORE_NAME).objectStore(STORE_NAME).openCursor(null, 'prev'); request.onsuccess = () => { const cursor = request.result; if (cursor) { photos.push(cursor.value); cursor.continue(); } else resolve(); }; request.onerror = () => reject(request.error); });
+  db.close(); return photos;
+}
 async function loadAdjacentPhoto(id, direction) {
   const db = await photoDatabase(); const range = direction === 'previous' ? IDBKeyRange.upperBound(id, true) : IDBKeyRange.lowerBound(id, true);
   const cursorDirection = direction === 'previous' ? 'prev' : 'next';
@@ -57,18 +61,25 @@ async function removePhoto(id) {
 function setCurrentPhoto(photo) {
   currentPhoto = photo; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(photo.blob);
   lastPhotoImage.src = photoUrl; previewImage.src = photoUrl; downloadPhoto.href = photoUrl; downloadPhoto.download = `FaceUp-${photo.id}.jpg`; lastPhoto.hidden = false;
-  updatePhotoNavigation(photo.id);
+  renderPhotoStrip(photo.id);
 }
-async function updatePhotoNavigation(id) {
+async function renderPhotoStrip(id) {
   try {
-    const [previous, next] = await Promise.all([loadAdjacentPhoto(id, 'previous'), loadAdjacentPhoto(id, 'next')]);
-    if (currentPhoto?.id !== id) return; previousPhoto.disabled = !previous; nextPhoto.disabled = !next;
-  } catch { previousPhoto.disabled = true; nextPhoto.disabled = true; }
+    const photos = await loadAllPhotos(); if (currentPhoto?.id !== id) return;
+    thumbnailUrls.forEach(url => URL.revokeObjectURL(url)); thumbnailUrls = [];
+    const fragment = document.createDocumentFragment();
+    photos.forEach(photo => {
+      const button = document.createElement('button'); button.className = `gallery-thumbnail${photo.id === id ? ' selected' : ''}`; button.setAttribute('aria-label', 'Открыть снимок');
+      const image = document.createElement('img'); const url = URL.createObjectURL(photo.blob); thumbnailUrls.push(url); image.src = url; image.alt = ''; button.append(image);
+      button.addEventListener('click', () => { setCurrentPhoto(photo); resetViewerZoom(); }); fragment.append(button);
+    });
+    thumbnailStrip.replaceChildren(fragment); thumbnailStrip.querySelector('.selected')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  } catch { thumbnailStrip.replaceChildren(); }
 }
 async function refreshLastPhoto() {
   try {
     const photo = await loadLatestPhoto();
-    if (photo) setCurrentPhoto(photo); else { currentPhoto = undefined; lastPhoto.hidden = true; }
+    if (photo) setCurrentPhoto(photo); else { currentPhoto = undefined; lastPhoto.hidden = true; thumbnailStrip.replaceChildren(); }
   } catch { /* Камера продолжит работать, даже если хранилище временно недоступно. */ }
 }
 function showMessage(text, duration = 0) {
@@ -89,8 +100,17 @@ function zoomPhotoAt(scale, clientX, clientY) {
 }
 function touchDistance(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
 function touchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
-function openViewer() { if (currentPhoto) { resetViewerZoom(); viewer.hidden = false; } }
+function closeViewer() { viewer.hidden = true; resetViewerZoom(); refreshLastPhoto(); }
+function openViewer() { if (currentPhoto) { resetViewerZoom(); viewer.hidden = false; history.pushState({ faceUpViewer: true }, '', location.href); } }
 function flashScreen() { flash.classList.remove('active'); void flash.offsetWidth; flash.classList.add('active'); }
+async function switchViewedPhoto(direction) {
+  if (!currentPhoto) return; const photo = await loadAdjacentPhoto(currentPhoto.id, direction);
+  if (photo) { setCurrentPhoto(photo); resetViewerZoom(); }
+}
+async function autoStartCamera() {
+  if (!navigator.permissions?.query) return;
+  try { if ((await navigator.permissions.query({ name: 'camera' })).state === 'granted') await openCamera(); } catch { /* Разрешение будет запрошено только по кнопке. */ }
+}
 
 function setZoom(value) {
   const z = Number(value); video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
@@ -114,18 +134,23 @@ capture.addEventListener('click', () => {
   context.translate(width / 2, height / 2); context.scale(facingMode === 'user' ? -z : z, z); context.drawImage(video, -width / 2, -height / 2, width, height);
   canvas.toBlob(async blob => { if (!blob) return; try { setCurrentPhoto(await savePhoto(blob)); } catch { showMessage('Не удалось сохранить снимок.'); } }, 'image/jpeg', 0.95);
 });
-lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { viewer.hidden = true; refreshLastPhoto(); });
-previousPhoto.addEventListener('click', async () => { if (currentPhoto) { const photo = await loadAdjacentPhoto(currentPhoto.id, 'previous'); if (photo) setCurrentPhoto(photo); } });
-nextPhoto.addEventListener('click', async () => { if (currentPhoto) { const photo = await loadAdjacentPhoto(currentPhoto.id, 'next'); if (photo) setCurrentPhoto(photo); } });
+lastPhoto.addEventListener('click', openViewer); backToCamera.addEventListener('click', () => { if (history.state?.faceUpViewer) history.back(); else closeViewer(); });
 previewImage.addEventListener('touchstart', event => {
   if (event.touches.length === 2) { pinchStartDistance = touchDistance(event.touches); pinchStartScale = viewerScale; event.preventDefault(); }
   if (event.touches.length === 1 && viewerScale > 1) { dragStartX = event.touches[0].clientX; dragStartY = event.touches[0].clientY; dragStartOffsetX = viewerX; dragStartOffsetY = viewerY; event.preventDefault(); }
+  if (event.touches.length === 1 && viewerScale === 1) { swipeStartX = event.touches[0].clientX; swipeStartY = event.touches[0].clientY; }
 }, { passive: false });
 previewImage.addEventListener('touchmove', event => {
   if (event.touches.length === 2 && pinchStartDistance) { const point = touchMidpoint(event.touches); zoomPhotoAt(pinchStartScale * touchDistance(event.touches) / pinchStartDistance, point.x, point.y); event.preventDefault(); }
   if (event.touches.length === 1 && dragStartX !== undefined) { viewerX = dragStartOffsetX + event.touches[0].clientX - dragStartX; viewerY = dragStartOffsetY + event.touches[0].clientY - dragStartY; constrainViewerPosition(); updateViewerTransform(); event.preventDefault(); }
 }, { passive: false });
-previewImage.addEventListener('touchend', event => { if (event.touches.length < 2) pinchStartDistance = undefined; if (!event.touches.length) dragStartX = undefined; });
+previewImage.addEventListener('touchend', event => {
+  if (event.touches.length < 2) pinchStartDistance = undefined;
+  if (!event.touches.length) {
+    dragStartX = undefined;
+    if (swipeStartX !== undefined) { const changeX = event.changedTouches[0].clientX - swipeStartX; const changeY = event.changedTouches[0].clientY - swipeStartY; if (Math.abs(changeX) > 50 && Math.abs(changeX) > Math.abs(changeY)) switchViewedPhoto(changeX < 0 ? 'previous' : 'next'); swipeStartX = undefined; }
+  }
+});
 sharePhoto.addEventListener('click', async () => {
   if (!currentPhoto) return; const file = new File([currentPhoto.blob], `FaceUp-${currentPhoto.id}.jpg`, { type: 'image/jpeg' });
   if (!navigator.canShare?.({ files: [file] })) { message.textContent = 'На этом устройстве используйте «Сохранить файл».'; return; }
@@ -141,7 +166,12 @@ deletePhoto.addEventListener('click', async () => {
 });
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; install.hidden = false; });
 install.addEventListener('click', async () => { deferredInstall?.prompt(); await deferredInstall?.userChoice; deferredInstall = null; install.hidden = true; });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.20.0');
+window.addEventListener('popstate', () => {
+  if (viewer.hidden) return;
+  if (viewerScale > 1) { resetViewerZoom(); history.pushState({ faceUpViewer: true }, '', location.href); } else closeViewer();
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=1.23.0');
 refreshLastPhoto();
+autoStartCamera();
 window.addEventListener('pageshow', refreshLastPhoto);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLastPhoto(); });
