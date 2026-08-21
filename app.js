@@ -24,7 +24,7 @@ const downloadPhoto = document.querySelector('#downloadPhoto');
 const sharePhoto = document.querySelector('#sharePhoto');
 const deletePhoto = document.querySelector('#deletePhoto');
 let stream; let facingMode = 'user'; let deferredInstall; let currentPhoto; let photoUrl;
-let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomDragMoved; let zoomWasExpandedOnPointerDown; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
+let messageTimer; let viewerScale = 1; let viewerX = 0; let viewerY = 0; let pinchStartDistance; let pinchStartScale; let dragStartX; let dragStartY; let dragStartOffsetX; let dragStartOffsetY; let swipeStartX; let swipeStartY; let swipeOffsetX = 0; let swipeDirection; let swipeTarget; let swipeRequest = 0; let thumbnailUrls = []; let transitionUrl; let transitionTimer; let swipeTimer; let viewerZoomAnimationTimer; let cameraZoomSnap; let cameraRenderZoom = 1; let hardwareZoomCapabilities; let hardwareZoomLevel = 1; let requestedHardwareZoom; let hardwareZoomChanging = false; let activeZoomPointer; let zoomDragStartX; let zoomDragStartValue; let zoomCollapseTimer; let tapStartX; let tapStartY; let tapMoved; let previousTap;
 
 const DB_NAME = 'faceup';
 const STORE_NAME = 'photos';
@@ -260,9 +260,9 @@ function setZoomFromPointer(event) {
 // slider maps a tap to a new value before it is dragged, which made a 1× tap
 // jump to a value such as 7×.  Here a tap preserves the current value and only
 // horizontal movement changes the dial.
-zoomArcControl.addEventListener('pointerdown', event => { if (zoom.disabled) return; event.preventDefault(); zoomWasExpandedOnPointerDown = zoomArcControl.classList.contains('is-expanded'); zoomDragMoved = false; activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoomArcControl.setPointerCapture?.(event.pointerId); openZoomArc(); });
-zoomArcControl.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) { event.preventDefault(); if (Math.abs(event.clientX - zoomDragStartX) > 3) { zoomDragMoved = true; setZoomFromPointer(event); } } });
-zoomArcControl.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) { activeZoomPointer = undefined; if (zoomWasExpandedOnPointerDown && !zoomDragMoved) closeZoomArc(); } });
+zoomArcControl.addEventListener('pointerdown', event => { if (zoom.disabled) return; event.preventDefault(); activeZoomPointer = event.pointerId; zoomDragStartX = event.clientX; zoomDragStartValue = Number(zoom.value); zoomArcControl.setPointerCapture?.(event.pointerId); openZoomArc(); });
+zoomArcControl.addEventListener('pointermove', event => { if (event.pointerId === activeZoomPointer) { event.preventDefault(); if (Math.abs(event.clientX - zoomDragStartX) > 3) setZoomFromPointer(event); } });
+zoomArcControl.addEventListener('pointerup', event => { if (event.pointerId === activeZoomPointer) activeZoomPointer = undefined; });
 zoomArcControl.addEventListener('pointercancel', event => { if (event.pointerId === activeZoomPointer) activeZoomPointer = undefined; });
 window.addEventListener('pointerdown', event => { if (zoomArcControl.classList.contains('is-expanded') && !zoomArcControl.contains(event.target)) closeZoomArc(); }, true);
 document.addEventListener('contextmenu', event => event.preventDefault());
