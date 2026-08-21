@@ -14,7 +14,7 @@
     <main class="camera-app">
       <video id="video" autoplay playsinline muted aria-label="Изображение с фронтальной камеры"></video>
       <div class="shade shade-top"></div><div class="shade shade-bottom"></div>
-      <section class="header"><h1>FaceUp <span class="version">v1.2.1</span></h1><button id="install" hidden>Установить</button></section>
+      <section class="header"><h1>FaceUp <span class="version">v1.3.0</span></h1><button id="install" hidden>Установить</button></section>
       <section id="startPanel" class="start-panel">
         <p>Откройте фронтальную камеру</p>
         <button id="start" class="primary">Включить камеру</button>
@@ -26,9 +26,22 @@
         <div class="quick-zoom" aria-label="Быстрый выбор зума">
           <button data-zoom="1">1×</button><button data-zoom="2">2×</button><button data-zoom="5">5×</button><button data-zoom="10">10×</button>
         </div>
+        <div class="capture-row">
+          <button id="lastPhoto" class="photo-thumb" hidden aria-label="Открыть последний снимок"><img id="lastPhotoImage" alt="Последний снимок" /></button>
+          <button id="capture" class="shutter" aria-label="Сделать снимок"><span></span></button>
+          <span class="capture-spacer" aria-hidden="true"></span>
+        </div>
         <button id="switch" class="secondary">Сменить камеру</button>
       </section>
       <p id="message" class="message" role="alert"></p>
+      <section id="viewer" class="viewer" hidden aria-label="Просмотр снимка">
+        <header class="viewer-header"><button id="backToCamera">‹ Назад</button><span>Снимок</span></header>
+        <img id="previewImage" alt="Сделанный снимок" />
+        <footer class="viewer-actions">
+          <a id="downloadPhoto" class="button-link" download>Сохранить файл</a>
+          <button id="sharePhoto">Поделиться</button>
+        </footer>
+      </section>
     </main>
     <script src="app.js"></script>
   </body>
