@@ -9,7 +9,12 @@ const message = document.querySelector('#message');
 const install = document.querySelector('#install');
 let stream; let facingMode = 'user'; let deferredInstall;
 
-function setZoom(value) { const z = Number(value); video.style.transform = `scale(${z})`; zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`; }
+function setZoom(value) {
+  const z = Number(value);
+  // Фронтальная камера должна вести себя как привычная селфи-камера.
+  video.style.transform = facingMode === 'user' ? `scale(${-z}, ${z})` : `scale(${z})`;
+  zoom.value = z; zoomValue.value = `${z.toFixed(1)}×`; zoomValue.textContent = `${z.toFixed(1)}×`;
+}
 async function openCamera() {
   message.textContent = '';
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('Ваш браузер не поддерживает доступ к камере.');
